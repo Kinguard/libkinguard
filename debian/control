@@ -1,0 +1,26 @@
+Source: libkinguard
+Priority: optional
+Maintainer: Tor Krill <tor@openproducts.se>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.1.2
+Section: libs
+Homepage: https://www.kinguardproject.org/
+#Vcs-Git: https://anonscm.debian.org/git/collab-maint/libkinguard.git
+#Vcs-Browser: https://github.com/Kinguard
+
+Package: libkinguard-dev
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends: libkinguard (= ${binary:Version}), ${misc:Depends}
+Description: Kinguard project high level functionality library
+ Development files for the libkinguard package
+
+Package: libkinguard
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Kinguard project high level functionality library
+ High level functionality for the Kinguard project platform.
+ This library contains functionality for managing resources
+ such as users, backup etc. 
