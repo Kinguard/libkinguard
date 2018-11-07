@@ -62,6 +62,6 @@ set_target_properties( ${PROJECT_NAME}_static PROPERTIES
 #add_test( NAME TestLibKinguard COMMAND testapp )
 
 install( FILES ${headers} DESTINATION include/${PROJECT_NAME} )
-install(FILES "${PROJECT_BINARY_DIR}/lib${PROJECT_NAME}.pc" DESTINATION lib/pkgconfig)
+install(FILES "${PROJECT_BINARY_DIR}/lib${PROJECT_NAME}.pc" DESTINATION lib/${CMAKE_LIBRARY_ARCHITECTURE}/pkgconfig)
 install(FILES "${PROJECT_BINARY_DIR}/lib${PROJECT_NAME}.pc" DESTINATION share/pkgconfig)
-install( TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_static DESTINATION lib )
+install( TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_static DESTINATION lib/${CMAKE_LIBRARY_ARCHITECTURE} )
