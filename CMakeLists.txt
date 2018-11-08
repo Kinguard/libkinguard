@@ -29,14 +29,20 @@ include_directories(
 	)
 
 set( headers
+	BackupManager.h
 	BaseManager.h
 	IdentityManager.h
+	MailManager.h
+	StorageManager.h
 	"${PROJECT_BINARY_DIR}/Config.h"
 	)
 
 set( src
+	BackupManager.cpp
 	BaseManager.cpp
 	IdentityManager.cpp
+	MailManager.cpp
+	StorageManager.cpp
 	)
 
 add_definitions( -std=c++11 -Wall )
