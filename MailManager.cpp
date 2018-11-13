@@ -9,6 +9,9 @@
 #include <libutils/Logger.h>
 using namespace OPI;
 
+//TODO: move to sysconfig or better, move storage to secop
+#define FETCHMAILRC	"/var/opi/etc/fetchmailrc"
+
 namespace KGP
 {
 
@@ -145,21 +148,21 @@ bool MailManager::RemoveLocalAddress(const string &user)
 
 list<map<string, string> > MailManager::GetRemoteAccounts(const string &user)
 {
-	FetchmailConfig fc( SCFG.GetKeyAsString("","") );
+	FetchmailConfig fc( FETCHMAILRC );
 
 	return fc.GetAccounts( user );
 }
 
 map<string, string> MailManager::GetRemoteAccount(const string &hostname, const string &identity)
 {
-	FetchmailConfig fc( SCFG.GetKeyAsString("","") );
+	FetchmailConfig fc( FETCHMAILRC );
 
 	return fc.GetAccount( hostname, identity);
 }
 
 void MailManager::AddRemoteAccount(const string &email, const string &host, const string &identity, const string &password, const string &user, bool ssl)
 {
-	FetchmailConfig fc( SCFG.GetKeyAsString("","") );
+	FetchmailConfig fc( FETCHMAILRC);
 
 	fc.AddAccount(email, host, identity, password, user, ssl );
 	fc.WriteConfig();
@@ -169,7 +172,7 @@ void MailManager::AddRemoteAccount(const string &email, const string &host, cons
 
 void MailManager::UpdateRemoteAccount(const string &email, const string &host, const string &identity, const string &password, const string &user, bool ssl)
 {
-	FetchmailConfig fc( SCFG.GetKeyAsString("","") );
+	FetchmailConfig fc( FETCHMAILRC );
 
 	fc.UpdateAccount(email, host, identity, password, user, ssl );
 	fc.WriteConfig();
@@ -179,7 +182,7 @@ void MailManager::UpdateRemoteAccount(const string &email, const string &host, c
 
 void MailManager::DeleteRemoteAccount(const string &hostname, const string &identity)
 {
-	FetchmailConfig fc( SCFG.GetKeyAsString("","") );
+	FetchmailConfig fc( FETCHMAILRC );
 
 	fc.DeleteAccount(hostname, identity);
 	this->fetchmailupdated = true;
