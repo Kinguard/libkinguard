@@ -12,7 +12,7 @@ Package: libkinguard-dev
 Section: libdevel
 Architecture: any
 Multi-Arch: same
-Depends: libkinguard (= ${binary:Version}), ${misc:Depends}
+Depends: libkinguard1 (= ${binary:Version}), ${misc:Depends}
 Description: Kinguard project high level functionality library
  Development files for the libkinguard package
 

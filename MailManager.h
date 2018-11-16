@@ -1,7 +1,7 @@
 #ifndef MAILMANAGER_H
 #define MAILMANAGER_H
 
-#include <libopi/BaseManager.h>
+#include "BaseManager.h"
 
 #include <string>
 #include <list>
@@ -34,7 +34,7 @@ namespace KGP
  *
  */
 
-class MailManager : public OPI::BaseManager
+class MailManager: public KGP::BaseManager
 {
 private:
 	MailManager();
