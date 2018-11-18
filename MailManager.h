@@ -34,13 +34,34 @@ namespace KGP
  *
  */
 
-class MailManager: public KGP::BaseManager
+class MailManager : public BaseManager
 {
 private:
 	MailManager();
 public:
 	static MailManager& Instance();
 
+	// Global management
+
+	/**
+	 * @brief DeleteUser completely remove local user from mailsystem
+	 * @param user
+	 */
+	void DeleteUser(const string& user);
+
+	/**
+	 * @brief AddToAdmin add user to receivelist of admin mail
+	 * @param user
+	 * @return true upon success
+	 */
+	bool AddToAdmin(const string& user);
+
+	/**
+	 * @brief RemoveFromAdmin remove user as recipient for admin mail
+	 * @param user
+	 * @return true upon success
+	 */
+	bool RemoveFromAdmin(const string& user);
 
 	// Domain management
 	/**
@@ -80,6 +101,13 @@ public:
 	 * @param address address to delete
 	 */
 	void DeleteAddress(const string& domain, const string& address);
+
+
+	/**
+	 * @brief DeleteAddresses delete all addresses for user
+	 * @param user
+	 */
+	void DeleteAddresses(const string& user);
 
 	/**
 	 * @brief GetAddresses get addresses for specific domain
@@ -160,10 +188,42 @@ public:
 	void DeleteRemoteAccount(const string& hostname, const string& identity);
 
 	// Aliases management - MailAliasFile
+	/**
+	 * @brief GetAliases get all aliases
+	 * @return
+	 */
 	list<string> GetAliases( );
+
+	/**
+	 * @brief GetAliasUsers get all users of alias
+	 * @param alias
+	 * @return
+	 */
 	list<string> GetAliasUsers( const string& alias );
+
+	/**
+	 * @brief AddUserAlias add user to alias
+	 * @param alias
+	 * @param user
+	 * @return
+	 */
 	bool AddUserAlias(const string& alias, const string& user);
+
+	/**
+	 * @brief RemoveUserAlias remove user from specific alias
+	 * @param alias
+	 * @param user
+	 * @return
+	 */
 	bool RemoveUserAlias(const string& alias, const string& user);
+
+	/**
+	 * @brief RemoveUserAliases remove all aliases for user
+	 * @param user
+	 * @return
+	 */
+	bool RemoveUserAliases(const string& user);
+
 
 	// Misc functions
 

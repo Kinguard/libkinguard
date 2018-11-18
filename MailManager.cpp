@@ -7,6 +7,7 @@
 #include <libutils/UserGroups.h>
 #include <libutils/Process.h>
 #include <libutils/Logger.h>
+
 using namespace OPI;
 
 //TODO: move to sysconfig or better, move storage to secop
@@ -25,6 +26,48 @@ MailManager &MailManager::Instance()
 	static MailManager mgr;
 
 	return mgr;
+}
+
+void MailManager::DeleteUser(const string &user)
+{
+	// Remove any fetchmail accounts
+	list<map<string,string>> accounts = this->GetRemoteAccounts( user );
+
+	for(map<string,string>& account: accounts)
+	{
+		this->DeleteRemoteAccount( account["host"], account["identity"]);
+	}
+
+	// Delete all incoming addresses
+	this->DeleteAddresses( user );
+
+	// Delete user from localmail
+	this->RemoveLocalAddress(user);
+
+	// If in aliases, remove as well
+	this->RemoveUserAliases( user );
+}
+
+bool MailManager::AddToAdmin(const string &user)
+{
+	if( ! this->AddUserAlias("/^postmaster@/",user+"@localdomain") ||
+			! this->AddUserAlias("/^root@/",user+"@localdomain"))
+	{
+		return false;
+	}
+
+	return true;
+}
+
+bool MailManager::RemoveFromAdmin(const string &user)
+{
+	if( ! this->RemoveUserAlias("/^postmaster@/",user+"@localdomain") ||
+			! this->RemoveUserAlias("/^root@/",user+"@localdomain") )
+	{
+		return false;
+	}
+
+	return true;
 }
 
 list<string> MailManager::GetDomains()
@@ -63,6 +106,31 @@ void MailManager::DeleteAddress(const string &domain, const string &address)
 	mc.DeleteAddress(domain, address);
 	mc.WriteConfig();
 	this->postfixupdated = true;
+}
+
+void MailManager::DeleteAddresses(const string &user)
+{
+	MailConfig mc;
+
+	list<string> doms = mc.GetDomains();
+
+	for( const auto& domain: doms)
+	{
+		list<tuple<string,string>> addrs = mc.GetAddresses(domain);
+
+		for( tuple<string,string> addr: addrs)
+		{
+			string localpart, auser;
+			tie(localpart, auser) = addr;
+
+			if( auser == user )
+			{
+				mc.DeleteAddress(domain,localpart);
+			}
+		}
+
+	}
+
 }
 
 list<tuple<string, string> > MailManager::GetAddresses(const string &domain)
@@ -268,6 +336,30 @@ bool MailManager::RemoveUserAlias(const string &alias, const string &user)
 		return false;
 	}
 
+	return true;
+}
+
+bool MailManager::RemoveUserAliases(const string &user)
+{
+	list<string> aliases = this->GetAliases();
+
+	for( const string& alias: aliases)
+	{
+
+		list<string> users = this->GetAliasUsers( alias );
+
+		for( const string& auser: users)
+		{
+			if( auser == user )
+			{
+				if( ! this->RemoveUserAlias(alias, user) )
+				{
+					return false;
+				}
+			}
+		}
+
+	}
 	return true;
 }
 

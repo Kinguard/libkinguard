@@ -34,6 +34,7 @@ set( headers
 	IdentityManager.h
 	MailManager.h
 	StorageManager.h
+	UserManager.h
 	"${PROJECT_BINARY_DIR}/Config.h"
 	)
 
@@ -43,6 +44,7 @@ set( src
 	IdentityManager.cpp
 	MailManager.cpp
 	StorageManager.cpp
+	UserManager.cpp
 	)
 
 add_definitions( -std=c++11 -Wall )
