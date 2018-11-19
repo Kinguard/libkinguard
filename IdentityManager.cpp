@@ -29,11 +29,14 @@ IdentityManager &IdentityManager::Instance()
 	return mgr;
 }
 
-bool IdentityManager::SetHostname(const string &name)
+bool IdentityManager::SetFqdn(const string &name, const string &domain)
 {
 	try {
 		OPI::SysConfig cfg(true);
+		this->hostname = name;
+		this->domain = domain;
 		cfg.PutKey("hostinfo","hostname", name);
+		cfg.PutKey("hostinfo","domain", domain);
 	}
 	catch (std::runtime_error& err)
 	{
@@ -41,55 +44,34 @@ bool IdentityManager::SetHostname(const string &name)
 		this->global_error = string("Failed to set hostname :") + err.what();
 		return false;
 	}
-
+	logg << Logger::Warning << "---  TODO --- Update MailConfig here" << lend;
 	return true;
 }
 
 string IdentityManager::GetHostname()
 {
-	string ret;
-	try
+	if( this->hostname == "" )
 	{
-		ret = SCFG.GetKeyAsString("hostinfo", "hostname");
+		// Get hostname from sysconfig
+		if( SCFG.HasKey("hostinfo", "hostname") )
+		{
+			this->hostname = SCFG.GetKeyAsString("hostinfo", "hostname");
+		}
 	}
-	catch (std::runtime_error& err)
-	{
-		this->global_error = string("Failed to retrieve hostname") + err.what();
-		logg << Logger::Error << this->global_error << lend;
-	}
-	return ret;
-}
-
-bool IdentityManager::SetDomain(const string &domain)
-{
-	try {
-		OPI::SysConfig cfg(true);
-		cfg.PutKey("hostinfo","domain", domain);
-	}
-	catch (std::runtime_error& err)
-	{
-		logg << Logger::Error << "Failed to set domain:" << err.what() << lend;
-		this->global_error = string("Failed to set domain:") + err.what();
-		return false;
-	}
-
-	return true;
-
+	return this->hostname;
 }
 
 string IdentityManager::GetDomain()
 {
-	string ret;
-	try
+	if( this->domain == "" )
 	{
-		ret = SCFG.GetKeyAsString("hostinfo", "domain");
+		// Get domain from sysconfig
+		if( SCFG.HasKey("hostinfo", "domain") )
+		{
+			this->domain = SCFG.GetKeyAsString("hostinfo", "domain");
+		}
 	}
-	catch (std::runtime_error& err)
-	{
-		this->global_error = string("Failed to retrieve domain") + err.what();
-		logg << Logger::Error << this->global_error << lend;
-	}
-	return ret;
+	return this->domain;
 }
 
 tuple<string, string> IdentityManager::GetFqdn()
@@ -109,27 +91,56 @@ tuple<string, string> IdentityManager::GetFqdn()
 
 bool IdentityManager::CreateCertificate()
 {
-	try
-	{
-		OPI::SysConfig cfg;
 
-		if( ! OPI::CryptoHelper::MakeSelfSignedCert(
-					cfg.GetKeyAsString("dns","dnsauthkey"),
-					cfg.GetKeyAsString("hostinfo","syscert"),
-					cfg.GetKeyAsString("hostinfo","hostname") + "." + cfg.GetKeyAsString("hostinfo","domain"),
-					cfg.GetKeyAsString("dns","provider")
-					) )
+	OPI::SysConfig cfg;
+	string fqdn = cfg.GetKeyAsString("hostinfo","hostname") + "." + cfg.GetKeyAsString("hostinfo","domain");
+	string provider;
+
+	if ( this->HasDnsProvider() ) {
+		provider = cfg.GetKeyAsString("dns","provider");
+		if ( provider == "OpenProducts" )
 		{
-			return false;
+			provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
 		}
 
+		logg << Logger::Debug << "Request certificate from '" << provider << "'"<<lend;
+		if( !this->GetCertificate(fqdn, provider) )
+		{
+			logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
+			return false;
+		}
 	}
-	catch (std::runtime_error& err)
+	else
 	{
-		logg << Logger::Error << "Failed to generate certificate:" << err.what() << lend;
-		this->global_error = string("Failed to generate certificate:") + err.what();
-		return false;
+		try
+		{
+
+			if( ! OPI::CryptoHelper::MakeSelfSignedCert(
+						cfg.GetKeyAsString("dns","dnsauthkey"),
+						cfg.GetKeyAsString("hostinfo","syscert"),
+						fqdn,
+						cfg.GetKeyAsString("hostinfo","hostname")
+						) )
+			{
+				return false;
+			}
+		}
+		catch (std::runtime_error& err)
+		{
+			logg << Logger::Error << "Failed to generate certificate:" << err.what() << lend;
+			this->global_error = string("Failed to generate certificate:") + err.what();
+			return false;
+		}
 	}
+
+	logg << Logger::Debug << "Get signed Certificate for '"<< fqdn <<"'"<<lend;
+	if( ! this->GetSignedCert(fqdn) )
+	{
+		// The call forks a new process and can not really fail, but the generation of the certificate
+		// can fail. But that can not be indicted here...
+		logg << Logger::Notice << "Failed to get launch thread to get signed cert."<<lend;
+	}
+
 	return true;
 }
 
@@ -149,6 +160,24 @@ bool IdentityManager::DnsNameAvailable(const string &hostname, const string &dom
 	return result_code == 200;
 }
 
+bool IdentityManager::DnsDomainAvailable(const string &domain)
+{
+	if ( ! SCFG.HasKey("dns","avaiabledomains") )
+	{
+		return false;
+	}
+	list<string> domains = SCFG.GetKeyAsStringList("dns","availabledomains");
+
+	for(const auto& d: domains)
+	{
+		if ( domain == d )
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 bool IdentityManager::AddDnsName(const string &hostname, const string &domain)
 {
 	logg << Logger::Debug << "Add DNS name" << lend;
@@ -166,37 +195,6 @@ bool IdentityManager::AddDnsName(const string &hostname, const string &domain)
 	{
 		logg << Logger::Error << "Failed to update Dyndns ("<< this->unitid << ") ("<< fqdn <<")"<<lend;
 		this->global_error = "Failed to update DynDNS";
-		return false;
-	}
-
-	logg << Logger::Debug << "Request OP certificate: "<<this->global_error<<lend;
-	if( !this->GetCertificate(fqdn, "OPI") )
-	{
-		logg << Logger::Error << "Failed to get certificate for device name: "<<this->global_error<<lend;
-		return false;
-	}
-
-	logg << Logger::Debug << "Get signed Certificate for '"<< fqdn <<"'"<<lend;
-	if( ! this->GetSignedCert(fqdn) )
-	{
-		// This can fail if portforwards does not work, then the above cert will be used.
-		logg << Logger::Notice << "Failed to get signed Certificate for device name: "<< fqdn <<lend;
-	}
-
-	if( ! this->SetHostname( hostname ) || ! this->SetDomain( domain ) )
-	{
-		logg << Logger::Error << "Failed to update hostname" << lend;
-		return false;
-	}
-
-	try
-	{
-		OPI::SysConfig sysconfig(true);
-		sysconfig.PutKey("dns", "enabled", true);
-	}
-	catch (std::runtime_error& err)
-	{
-		logg << Logger::Error << "Failed set dns flag: " << err.what() << lend;
 		return false;
 	}
 
@@ -225,6 +223,54 @@ list<string> IdentityManager::DnsAvailableDomains()
 	}
 
 	return domains;
+}
+
+bool IdentityManager::DisableDNS()
+{
+	try {
+		OPI::SysConfig cfg(true);
+		cfg.PutKey("dns","enabled", false);
+	}
+	catch (std::runtime_error& err)
+	{
+		logg << Logger::Error << "Failed to disable dns provider:" << err.what() << lend;
+		this->global_error = string("Failed to disable dns provider:") + err.what();
+		return false;
+	}
+
+	return true;
+}
+
+bool IdentityManager::EnableDNS()
+{
+	if ( SCFG.HasKey("dns", "provider") )
+	{
+		return this->SetDNSProvider(SCFG.GetKeyAsString("dns", "provider"));
+	}
+	else
+	{
+		logg << Logger::Error << "Failed to enable dns provider (missing in config)" << lend;
+		this->global_error = string("Failed to enable dns provider (missing in config)");
+		return false;
+	}
+}
+
+bool IdentityManager::SetDNSProvider(string provider)
+{
+	// set and enable dns provider
+	try {
+		OPI::SysConfig cfg(true);
+		cfg.PutKey("dns","provider", provider);
+		cfg.PutKey("dns","enabled", true);
+	}
+	catch (std::runtime_error& err)
+	{
+		logg << Logger::Error << "Failed to set dns provider:" << err.what() << lend;
+		this->global_error = string("Failed to set dns provider:") + err.what();
+		return false;
+	}
+
+	return true;
 }
 
 void IdentityManager::CleanUp()

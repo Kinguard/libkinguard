@@ -46,30 +46,25 @@ public:
 
 
 	/**
-	 * @brief SetHostname Set system hostname
+	 * @brief GetHostname Get system hostname
+	 * @return hostname upon success, emtpy string on failure
+	 */
+	string GetHostname();
+
+
+	/**
+	 * @brief GetDomain Get system domain name
+	 * @return hostname upon success, emtpy string on failure
+	 */
+	string GetDomain();
+
+	/**
+	 * @brief SetFqdn Set system hostname and domain
 	 * @param name
-	 * @return true upon success
-	 */
-	bool SetHostname(const string& name);
-
-	/**
-	 * @brief GetHostname get current hostname
-	 * @return hostname or empty string
-	 */
-	string GetHostname(void);
-
-	/**
-	 * @brief SetDomain Set domain name for system
 	 * @param domain
 	 * @return true upon success
 	 */
-	bool SetDomain(const string& domain);
-
-	/**
-	 * @brief GetDomain get current domain
-	 * @return domain or empty string
-	 */
-	string GetDomain(void);
+	bool SetFqdn(const string& name, const string &domain);
 
 	/**
 	 * @brief GetFqdn get complete fqdn
@@ -92,6 +87,13 @@ public:
 	 * @return true if available
 	 */
 	bool DnsNameAvailable(const string& hostname, const string& domain);
+
+	/**
+	 * @brief DnsDomainAvailable Check availability of dns-domain
+	 * @param domain
+	 * @return true if available
+	 */
+	bool DnsDomainAvailable(const string& domain);
 
 	/**
 	 * @brief AddDnsName Register a new DNS entry for this unit
@@ -121,6 +123,26 @@ public:
 	 */
 	list<string> DnsAvailableDomains(void);
 
+	/**
+	 * @brief SetDNSProvider Set and Enable DNS Provider
+	 * @param provider
+	 * @return true if possible to set provider
+	 */
+	bool SetDNSProvider(string provider);
+
+	/**
+	 * @brief EnableDNSProvider Enable currently configured DNS Provider
+	 * @return true if successful
+	 */
+	bool EnableDNS();
+
+	/**
+	 * @brief DisableDNS Disable currently configured DNS Provider
+	 * @param
+	 * @return true if successful
+	 */
+	bool DisableDNS();
+
 
 	/**
 	 * @brief CleanUp clean up environment if needed
@@ -138,11 +160,13 @@ private:
 	bool OPLogin();
 
 	string unitid;
+	string hostname;
+	string domain;
 	string token;
 	ThreadPtr signerthread; // Used by letsencrypt signer thread
 };
 
 
-} // Namespace OPI
+} // Namespace KGP
 
 #endif // IDENTITYMANAGER_H
