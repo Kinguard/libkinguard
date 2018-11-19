@@ -45,6 +45,21 @@ bool IdentityManager::SetHostname(const string &name)
 	return true;
 }
 
+string IdentityManager::GetHostname()
+{
+	string ret;
+	try
+	{
+		ret = SCFG.GetKeyAsString("hostinfo", "hostname");
+	}
+	catch (std::runtime_error& err)
+	{
+		this->global_error = string("Failed to retrieve hostname") + err.what();
+		logg << Logger::Error << this->global_error << lend;
+	}
+	return ret;
+}
+
 bool IdentityManager::SetDomain(const string &domain)
 {
 	try {
@@ -59,6 +74,36 @@ bool IdentityManager::SetDomain(const string &domain)
 	}
 
 	return true;
+
+}
+
+string IdentityManager::GetDomain()
+{
+	string ret;
+	try
+	{
+		ret = SCFG.GetKeyAsString("hostinfo", "domain");
+	}
+	catch (std::runtime_error& err)
+	{
+		this->global_error = string("Failed to retrieve domain") + err.what();
+		logg << Logger::Error << this->global_error << lend;
+	}
+	return ret;
+}
+
+tuple<string, string> IdentityManager::GetFqdn()
+{
+	OPI::SysConfig cfg;
+	string host, domain;
+
+	if( cfg.HasKey("hostinfo", "hostname") && cfg.HasKey("hostinfo", "domain") )
+	{
+		host = cfg.GetKeyAsString("hostinfo", "hostname");
+		domain = cfg.GetKeyAsString("hostinfo", "domain");
+	}
+
+	return make_tuple(host, domain);
 
 }
 
@@ -138,12 +183,48 @@ bool IdentityManager::AddDnsName(const string &hostname, const string &domain)
 		logg << Logger::Notice << "Failed to get signed Certificate for device name: "<< fqdn <<lend;
 	}
 
+	if( ! this->SetHostname( hostname ) || ! this->SetDomain( domain ) )
+	{
+		logg << Logger::Error << "Failed to update hostname" << lend;
+		return false;
+	}
+
+	try
+	{
+		OPI::SysConfig sysconfig(true);
+		sysconfig.PutKey("dns", "enabled", true);
+	}
+	catch (std::runtime_error& err)
+	{
+		logg << Logger::Error << "Failed set dns flag: " << err.what() << lend;
+		return false;
+	}
+
 	return true;
 }
 
-bool IdentityManager::HasDNSProvider()
+tuple<string, string> IdentityManager::GetCurrentDnsName()
+{
+	string hostname,domain;
+
+	return make_tuple(hostname,domain);
+}
+
+bool IdentityManager::HasDnsProvider(void)
 {
 	return ( SCFG.HasKey("dns", "provider") && SCFG.GetKeyAsString("dns", "provider") == "OpenProducts" );
+}
+
+list<string> IdentityManager::DnsAvailableDomains()
+{
+	list<string> domains;
+
+	if( SCFG.HasKey("dns","availabledomains") )
+	{
+		domains = SCFG.GetKeyAsStringList("dns","availabledomains");
+	}
+
+	return domains;
 }
 
 void IdentityManager::CleanUp()
