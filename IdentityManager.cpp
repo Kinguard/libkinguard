@@ -1,11 +1,14 @@
 #include "IdentityManager.h"
 
+#include <ext/stdio_filebuf.h>
+
 #include <libutils/Logger.h>
 #include <libutils/String.h>
 #include <libutils/Process.h>
 #include <libutils/FileUtils.h>
 
 #include <libopi/AuthServer.h>
+#include <libopi/Secop.h>
 #include <libopi/SysConfig.h>
 #include <libopi/DnsServer.h>
 
@@ -89,47 +92,171 @@ tuple<string, string> IdentityManager::GetFqdn()
 
 }
 
-bool IdentityManager::CreateCertificate()
+tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string cert)
 {
+	SysConfig sysconfig(true);
 
-	OPI::SysConfig cfg;
-	string fqdn = cfg.GetKeyAsString("hostinfo","hostname") + "." + cfg.GetKeyAsString("hostinfo","domain");
-	string provider;
 
-	if ( this->HasDnsProvider() ) {
-		provider = cfg.GetKeyAsString("dns","provider");
-		if ( provider == "OpenProducts" )
+	string CustomCertFile,CustomKeyFile;
+	string webcert = sysconfig.GetKeyAsString("webcertificate","activecert");
+	string webkey = sysconfig.GetKeyAsString("webcertificate","activekey");
+
+
+	if (sysconfig.HasKey("webcertificate","customkey") && sysconfig.HasKey("webcertificate","customcert") )
+	{
+		// use and overwrite existing custom certs.
+		CustomKeyFile = sysconfig.GetKeyAsString("webcertificate","customkey");
+		CustomCertFile = sysconfig.GetKeyAsString("webcertificate","customcert");
+		try
 		{
-			provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
+			File::Write(CustomCertFile,cert,0600);
+			if ( key.length() ) // only write key if it is supplied
+			{
+				File::Write(CustomKeyFile,key,0600);
+			}
 		}
-
-		logg << Logger::Debug << "Request certificate from '" << provider << "'"<<lend;
-		if( !this->GetCertificate(fqdn, provider) )
+		catch ( Utils::ErrnoException& err)
 		{
-			logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
-			return false;
+			logg << Logger::Error << "Failed to write certificate(s) to file:" << err.what() << lend;
+			this->global_error = string("Failed to write certificate(s) to file:") + err.what();
+			return make_tuple(false,"Failed to write certificate(s) to file");
 		}
 	}
 	else
 	{
+		// Generate new filenames
+		sprintf( this->tmpfilename,"/etc/opi/usercert/usercertXXXXXX.pem");
+		int certfd = mkstemps(this->tmpfilename,4);
+
+		if( certfd <0 )
+		{
+			return make_tuple(false,"Failed to create cert file");
+		}
+		else
+		{
+			CustomCertFile = string(this->tmpfilename);
+		}
+		sprintf( this->tmpfilename,"/etc/opi/usercert/userkeyXXXXXX.pem");
+		int keyfd = mkstemps(this->tmpfilename,4);
+
+		if( keyfd <0 )
+		{
+			return make_tuple(false,"Failed to create key file");
+		}
+		else
+		{
+			CustomKeyFile = string(this->tmpfilename);
+		}
+
+		// Write content to new files
+		__gnu_cxx::stdio_filebuf<char> certfb( certfd, std::ios::out);
+		ostream scert(&certfb);
+		scert << cert;
+		scert << flush;
+
+		__gnu_cxx::stdio_filebuf<char> keyfb( keyfd, std::ios::out);
+		ostream skey(&keyfb);
+		skey << cert;
+		skey << flush;
+	}
+
+	// create a backup copy of the cert symlinks nginx uses
+	string curr_key,curr_cert;
+	curr_key = File::RealPath(webkey);
+	curr_cert = File::RealPath(webcert);
+
+	File::Delete(webcert);
+	File::Delete(webkey);
+
+	ignore = symlink(CustomCertFile.c_str(),webcert.c_str());
+	ignore = symlink(CustomKeyFile.c_str(),webkey.c_str());
+
+	// new links should now be in place, let nginx test the config
+	int retval;
+	string Message;
+
+	tie(retval,Message)=Process::Exec( "nginx -t" );
+	if ( retval )
+	{
 		try
 		{
+			sysconfig.PutKey("webcertificate","customkey",CustomKeyFile);
+			sysconfig.PutKey("webcertificate","customcert",CustomCertFile);
+			sysconfig.PutKey("webcertificate","backend","CUSTOMCERT");
+		}
+		catch (std::runtime_error& e)
+		{
+			logg << Logger::Error << "Failed to set config parameters" << lend;
+			return make_tuple(false,"Failed to set config parameters");
+		}
 
-			if( ! OPI::CryptoHelper::MakeSelfSignedCert(
-						cfg.GetKeyAsString("dns","dnsauthkey"),
-						cfg.GetKeyAsString("hostinfo","syscert"),
-						fqdn,
-						cfg.GetKeyAsString("hostinfo","hostname")
-						) )
+		return make_tuple(true,"");
+	}
+	else
+	{
+		// nginx config test failed, restore old links
+		logg << Logger::Debug << "Nginx config test failed" << lend;
+		File::Delete(webcert);
+		File::Delete(webkey);
+
+		ignore = symlink(curr_cert.c_str(),webcert.c_str());
+		ignore = symlink(curr_key.c_str(),webkey.c_str());
+
+		logg << Logger::Error << "Webserver config test failed with new certificates" << lend;
+		return make_tuple(false,"Webserver config test failed with new certificates");
+
+	}
+}
+bool IdentityManager::CreateCertificate()
+{
+	return this->CreateCertificate(true);
+}
+
+bool IdentityManager::CreateCertificate(bool forceProvider)
+{
+
+	OPI::SysConfig cfg;
+	string fqdn = this->GetHostname() + "." + this->GetDomain();
+	string provider;
+
+	if ( forceProvider )
+	{
+		// generate certificate for provider, or if no provider generate self signed certificate
+		if ( this->HasDnsProvider() ) {
+			provider = cfg.GetKeyAsString("dns","provider");
+			if ( provider == "OpenProducts" )
 			{
+				provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
+			}
+
+			logg << Logger::Debug << "Request certificate from '" << provider << "'"<<lend;
+			if( !this->GetCertificate(fqdn, provider) )
+			{
+				logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
 				return false;
 			}
 		}
-		catch (std::runtime_error& err)
+		else
 		{
-			logg << Logger::Error << "Failed to generate certificate:" << err.what() << lend;
-			this->global_error = string("Failed to generate certificate:") + err.what();
-			return false;
+			try
+			{
+
+				if( ! OPI::CryptoHelper::MakeSelfSignedCert(
+							cfg.GetKeyAsString("dns","dnsauthkey"),
+							cfg.GetKeyAsString("hostinfo","syscert"),
+							fqdn,
+							cfg.GetKeyAsString("hostinfo","hostname")
+							) )
+				{
+					return false;
+				}
+			}
+			catch (std::runtime_error& err)
+			{
+				logg << Logger::Error << "Failed to generate certificate:" << err.what() << lend;
+				this->global_error = string("Failed to generate certificate:") + err.what();
+				return false;
+			}
 		}
 	}
 
@@ -273,6 +400,198 @@ bool IdentityManager::SetDNSProvider(string provider)
 	return true;
 }
 
+bool IdentityManager::RegisterKeys() {
+	logg << Logger::Debug << "Register keys"<<lend;
+	string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
+	string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
+	string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
+	string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
+	try{
+		OPI::Secop s;
+
+		s.SockAuth();
+		list<map<string,string>> ids;
+
+		try
+		{
+			ids = s.AppGetIdentifiers("op-backend");
+		}
+		catch( runtime_error& err )
+		{
+			// Do nothing, appid is missing but thats ok.
+		}
+
+		if( ids.size() == 0 )
+		{
+			logg << Logger::Debug << "No keys in secop" << lend;
+			s.AppAddID("op-backend");
+
+			RSAWrapper ob;
+			ob.GenerateKeys();
+
+			// Write to secop
+			map<string,string> data;
+
+			data["type"] = "backendkeys";
+			data["pubkey"] = Base64Encode(ob.GetPubKeyAsDER());
+			data["privkey"] = Base64Encode(ob.GetPrivKeyAsDER());
+			s.AppAddIdentifier("op-backend", data);
+
+			logg << Logger::Debug << "Delete (if existing) old private key"<<lend;
+			// sysauth keys shall no longer exist on file.
+			if ( File::FileExists(sysauthkey)) {
+				File::Delete(sysauthkey);
+			}
+			if ( File::FileExists(syspubkey)) {
+				File::Delete(syspubkey);
+			}
+		}
+
+
+		string priv_path = File::GetPath( dnsauthkey );
+		if( ! File::DirExists( priv_path ) )
+		{
+			File::MkPath( priv_path, 0755);
+		}
+
+		string pub_path = File::GetPath( dnspubkey );
+		if( ! File::DirExists( pub_path ) )
+		{
+			File::MkPath( pub_path, 0755);
+		}
+
+		if( ! File::FileExists( dnsauthkey) || ! File::FileExists( dnspubkey ) )
+		{
+			RSAWrapper dns;
+			dns.GenerateKeys();
+
+			if ( File::FileExists(sysauthkey)) {
+				string olddnsauthkey = File::GetContentAsString( dnsauthkey,true );
+				File::Write(dnsauthkey+".old",olddnsauthkey, 0600 );
+			}
+			if ( File::FileExists(syspubkey)) {
+				string olddnspubkey = File::GetContentAsString(dnspubkey,true );
+				File::Write(dnspubkey+".old",olddnspubkey, 0644 );
+			}
+
+			File::Write(dnsauthkey, dns.PrivKeyAsPEM(), 0600 );
+			File::Write(dnspubkey, dns.PubKeyAsPEM(), 0644 );
+		}
+
+	}
+	catch( runtime_error& err)
+	{
+		logg << Logger::Notice << "Failed to register keys " << err.what() << lend;
+		return false;
+	}
+	return true;
+}
+
+tuple<bool,string> IdentityManager::UploadKeys(string unitid,string mpwd)
+{
+	AuthServer s(unitid);
+	int resultcode;
+	string token;
+	Json::Value ret;
+
+	tie(resultcode, ret) = s.Login();
+	logg << Logger::Debug << "Login resultcode from server: " << resultcode <<lend;
+
+	if( resultcode != 200 && resultcode != 403 && resultcode != 503)
+	{
+		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
+		return make_tuple(false,"");
+	}
+	if( resultcode == 503 )
+	{
+		// keys are missing in secop, register new keys in secop.
+		if ( ! this->RegisterKeys() )
+		{
+			logg << Logger::Error << "Failed to register keys"<< resultcode <<lend;
+			return make_tuple(false,"");
+		}
+		// try to login again
+		tie(resultcode, ret) = s.Login();
+		logg << Logger::Debug << "Retry Login resultcode from server: " << resultcode <<lend;
+		if( resultcode != 200 && resultcode != 403 )
+		{
+			logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
+			return make_tuple(false,"");
+		}
+	}
+
+	if( resultcode == 403  || resultcode == 503 )
+	{
+		logg << Logger::Debug << "Send Secret"<<lend;
+
+		if( ! ret.isMember("reply") || ! ret["reply"].isMember("challange")  )
+		{
+			logg << Logger::Error << "Missing argument from server "<< resultcode <<lend;
+			return make_tuple(false,"");
+		}
+
+		// Got new challenge to encrypt with master
+		string challenge = ret["reply"]["challange"].asString();
+
+		RSAWrapperPtr c = AuthServer::GetKeysFromSecop();
+
+		SecVector<byte> key = PBKDF2(SecString(mpwd.c_str(), mpwd.size() ), 32 );
+		AESWrapper aes( key );
+
+		string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
+
+		tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode(c->PubKeyAsPEM()) );
+		if( resultcode != 200 )
+		{
+			if( resultcode == 403)
+			{
+				logg << Logger::Debug << "Access denied to OP servers"<<lend;
+				return make_tuple(false,"");
+			}
+			else
+			{
+				logg << Logger::Debug << "Failed to communicate with OP server"<<lend;
+				return make_tuple(false,"");
+			}
+		}
+
+		if( ret.isMember("token") && ret["token"].isString() )
+		{
+			token = ret["token"].asString();
+			if (! this->UploadDnsKey(unitid,token))
+			{
+				logg << Logger::Error << "Failed to upload DNS key"<<lend;
+				return make_tuple(false,"");
+			}
+		}
+		else
+		{
+			logg << Logger::Error << "Missing argument in reply"<<lend;
+			return make_tuple(false,"");
+		}
+
+	}
+	else
+	{
+		if( ret.isMember("token") && ret["token"].isString() )
+		{
+			token = ret["token"].asString();
+			if (! this->UploadDnsKey(unitid,token))
+			{
+				logg << Logger::Error << "Failed to upload DNS key"<<lend;
+				return make_tuple(false,"");
+			}
+		}
+		else
+		{
+			logg << Logger::Error << "Missing argument in reply"<<lend;
+			return make_tuple(false,"");
+		}
+	}
+
+	return make_tuple(true,token);
+}
+
 void IdentityManager::CleanUp()
 {
 	if( this->signerthread )
@@ -283,6 +602,27 @@ void IdentityManager::CleanUp()
 
 IdentityManager::~IdentityManager()
 {
+
+}
+
+bool IdentityManager::UploadDnsKey(string unitid, string token)
+{
+	logg << Logger::Error<< "Received token from server: " << token <<lend;
+
+	// Try to upload dns-key
+	stringstream pk;
+	for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
+	{
+		pk << row << "\n";
+	}
+	DnsServer dns;
+	string pubkey = Base64Encode( pk.str() );
+	if(! dns.RegisterPublicKey(unitid, pubkey, token ))
+	{
+		logg << Logger::Error<< "Failed to upload DNS key" <<lend;
+		return false;
+	}
+	return true;
 
 }
 
@@ -439,5 +779,5 @@ bool IdentityManager::OPLogin()
 	return true;
 }
 
-} // Namespace OPI
+} // Namespace KGP
 

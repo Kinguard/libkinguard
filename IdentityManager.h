@@ -33,7 +33,7 @@ namespace KGP
  * and domain.
  *
  * Todo here is a generalisation to allow register multiple names
- *
+ * Copyright 2018 OpenProducts 237 AB
  */
 
 class IdentityManager: public BaseManager
@@ -72,6 +72,13 @@ public:
 	 */
 	tuple<string, string> GetFqdn(void);
 
+	/**
+	 * @brief CreateCertificate, create self signed certificate for set
+	 *        hostname and domain.
+	 * @param Force generation of DNS Provider / Self signed certificate
+	 * @return true upon success
+	 */
+	bool CreateCertificate(bool forceProvider);
 
 	/**
 	 * @brief CreateCertificate, create self signed certificate for set
@@ -79,6 +86,14 @@ public:
 	 * @return true upon success
 	 */
 	bool CreateCertificate();
+
+	/**
+	 * @brief WriteCustomCertificat, write a custom supplied key/cert to use.
+	 * @param key
+	 * @param certificate
+	 * @return true upon success
+	 */
+	tuple<bool,string>  WriteCustomCertificate(string key, string cert);
 
 	/**
 	 * @brief DnsNameAvailable Check availability of dns-name
@@ -143,6 +158,19 @@ public:
 	 */
 	bool DisableDNS();
 
+	/**
+	 * @brief Generate and register auth keys in secop
+	 * @return true if successful
+	 */
+	bool RegisterKeys();
+
+	/**
+	 * @brief Upload auth keys to provider backend
+	 * @param provider for the backend to use
+	 * @param mpwd password to use to sign the keys
+	 * @return true if successful
+	 */
+	tuple<bool,string> UploadKeys(string unitid, string mpwd);
 
 	/**
 	 * @brief CleanUp clean up environment if needed
@@ -155,15 +183,18 @@ private:
 
 	bool GetCertificate(const string& fqdn, const string& provider);
 	bool GetSignedCert(const string& fqdn);
+	bool writeCertificate(string cert, string CustomCertLocation);
 
 	bool CheckUnitID();
 	bool OPLogin();
+	bool UploadDnsKey(string unitid, string token);
 
 	string unitid;
 	string hostname;
 	string domain;
 	string token;
 	ThreadPtr signerthread; // Used by letsencrypt signer thread
+	char tmpfilename[128];
 };
 
 
