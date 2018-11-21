@@ -1,12 +1,11 @@
 Source: libkinguard
 Priority: optional
 Maintainer: Tor Krill <tor@openproducts.se>
-Build-Depends: debhelper (>= 10)
+Build-Depends: debhelper (>= 10), cmake, pkg-config, libopi-dev (>= 1.6.45)
 Standards-Version: 4.1.2
 Section: libs
 Homepage: https://www.kinguardproject.org/
-#Vcs-Git: https://anonscm.debian.org/git/collab-maint/libkinguard.git
-#Vcs-Browser: https://github.com/Kinguard
+
 
 Package: libkinguard-dev
 Section: libdevel
