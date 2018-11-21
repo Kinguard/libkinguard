@@ -289,7 +289,7 @@ bool IdentityManager::DnsNameAvailable(const string &hostname, const string &dom
 
 bool IdentityManager::DnsDomainAvailable(const string &domain)
 {
-	if ( ! SCFG.HasKey("dns","avaiabledomains") )
+	if ( ! SCFG.HasKey("dns","availabledomains") )
 	{
 		return false;
 	}
