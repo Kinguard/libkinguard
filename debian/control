@@ -1,7 +1,9 @@
 Source: libkinguard
 Priority: optional
 Maintainer: Tor Krill <tor@openproducts.se>
-Build-Depends: debhelper (>= 10), cmake, pkg-config, libopi-dev (>= 1.6.45)
+Build-Depends: debhelper (>= 10), cmake, pkg-config,
+	libopi-dev (>= 1.6.45),
+	libutils-dev (>= 1.5.12)
 Standards-Version: 4.1.2
 Section: libs
 Homepage: https://www.kinguardproject.org/
