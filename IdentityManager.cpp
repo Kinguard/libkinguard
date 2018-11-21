@@ -105,6 +105,7 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	if (sysconfig.HasKey("webcertificate","customkey") && sysconfig.HasKey("webcertificate","customcert") )
 	{
 		// use and overwrite existing custom certs.
+		logg << Logger::Debug << "Using existing custom cert paths" << lend;
 		CustomKeyFile = sysconfig.GetKeyAsString("webcertificate","customkey");
 		CustomCertFile = sysconfig.GetKeyAsString("webcertificate","customcert");
 		try
@@ -125,6 +126,7 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	else
 	{
 		// Generate new filenames
+		logg << Logger::Debug << "Generating new custom cert paths" << lend;
 		sprintf( this->tmpfilename,"/etc/opi/usercert/usercertXXXXXX.pem");
 		int certfd = mkstemps(this->tmpfilename,4);
 
@@ -135,7 +137,9 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 		else
 		{
 			CustomCertFile = string(this->tmpfilename);
+			logg << Logger::Debug << "CustomCertFile:" << CustomCertFile<< lend;
 		}
+
 		sprintf( this->tmpfilename,"/etc/opi/usercert/userkeyXXXXXX.pem");
 		int keyfd = mkstemps(this->tmpfilename,4);
 
@@ -146,6 +150,7 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 		else
 		{
 			CustomKeyFile = string(this->tmpfilename);
+			logg << Logger::Debug << "CustomKeyFile:" << CustomKeyFile<< lend;
 		}
 
 		// Write content to new files
