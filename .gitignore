@@ -1,0 +1,7 @@
+CMakeLists.txt.user
+debian/lib*
+debian/debhelper-build-stamp
+debian/.debhelper
+debian/files
+debian/tmp
+obj-*
