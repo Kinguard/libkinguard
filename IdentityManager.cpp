@@ -102,45 +102,47 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	string webkey = sysconfig.GetKeyAsString("webcertificate","activekey");
 
 
-	if (sysconfig.HasKey("webcertificate","customkey") && sysconfig.HasKey("webcertificate","customcert") )
+	// Generate new filenames
+	logg << Logger::Debug << "Generating new custom cert paths" << lend;
+
+	sprintf( this->tmpfilename,"/etc/opi/usercert/userCertXXXXXX.pem");
+
+	// check that the path exists.
+	if ( ! File::DirExists(File::GetPath(this->tmpfilename)) )
 	{
-		// use and overwrite existing custom certs.
-		logg << Logger::Debug << "Using existing custom cert paths" << lend;
-		CustomKeyFile = sysconfig.GetKeyAsString("webcertificate","customkey");
-		CustomCertFile = sysconfig.GetKeyAsString("webcertificate","customcert");
+		// create paths.
 		try
 		{
-			File::Write(CustomCertFile,cert,0600);
-			if ( key.length() ) // only write key if it is supplied
-			{
-				File::Write(CustomKeyFile,key,0600);
-			}
+			File::MkPath(File::GetPath(this->tmpfilename),0700);
 		}
-		catch ( Utils::ErrnoException& err)
+		catch (Utils::ErrnoException& err)
 		{
-			logg << Logger::Error << "Failed to write certificate(s) to file:" << err.what() << lend;
-			this->global_error = string("Failed to write certificate(s) to file:") + err.what();
-			return make_tuple(false,"Failed to write certificate(s) to file");
+			logg << Logger::Error << "Failed to create path for usercerts:" << err.what() << lend;
+			this->global_error = string("Failed to create path for usercerts:") + err.what();
+			return make_tuple(false,"Failed to create path for usercerts:");
 		}
+	}
+
+	int certfd = mkstemps(this->tmpfilename,4);
+
+	if( certfd <0 )
+	{
+		return make_tuple(false,"Failed to create cert file");
 	}
 	else
 	{
-		// Generate new filenames
-		logg << Logger::Debug << "Generating new custom cert paths" << lend;
-		sprintf( this->tmpfilename,"/etc/opi/usercert/usercertXXXXXX.pem");
-		int certfd = mkstemps(this->tmpfilename,4);
+		CustomCertFile = string(this->tmpfilename);
+		logg << Logger::Debug << "CustomCertFile:" << CustomCertFile<< lend;
+	}
+	// Write content to new files
+	__gnu_cxx::stdio_filebuf<char> certfb( certfd, std::ios::out);
+	ostream scert(&certfb);
+	scert << cert;
+	scert << flush;
 
-		if( certfd <0 )
-		{
-			return make_tuple(false,"Failed to create cert file");
-		}
-		else
-		{
-			CustomCertFile = string(this->tmpfilename);
-			logg << Logger::Debug << "CustomCertFile:" << CustomCertFile<< lend;
-		}
+	if ( key != "" ) {
 
-		sprintf( this->tmpfilename,"/etc/opi/usercert/userkeyXXXXXX.pem");
+		sprintf( this->tmpfilename,"/etc/opi/usercert/userKeyXXXXXX.pem");
 		int keyfd = mkstemps(this->tmpfilename,4);
 
 		if( keyfd <0 )
@@ -152,17 +154,14 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 			CustomKeyFile = string(this->tmpfilename);
 			logg << Logger::Debug << "CustomKeyFile:" << CustomKeyFile<< lend;
 		}
-
-		// Write content to new files
-		__gnu_cxx::stdio_filebuf<char> certfb( certfd, std::ios::out);
-		ostream scert(&certfb);
-		scert << cert;
-		scert << flush;
-
 		__gnu_cxx::stdio_filebuf<char> keyfb( keyfd, std::ios::out);
 		ostream skey(&keyfb);
-		skey << cert;
+		skey << key;
 		skey << flush;
+	}
+	else
+	{
+		CustomKeyFile = File::RealPath(webkey);
 	}
 
 	// create a backup copy of the cert symlinks nginx uses
@@ -185,8 +184,17 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	{
 		try
 		{
-			sysconfig.PutKey("webcertificate","customkey",CustomKeyFile);
-			sysconfig.PutKey("webcertificate","customcert",CustomCertFile);
+			if (SCFG.HasKey("webcertificate","backend") && (SCFG.GetKeyAsString("webcertificate","backend") == "CUSTOMCERT") )
+			{
+				// previous setup used Custom certificate, delete it
+				logg << Logger::Error << "Removing old certs" << lend;
+				File::Delete(curr_cert);
+				if ( key != "")
+				{
+					// only remove it if it has been replaced
+					File::Delete(curr_key);
+				}
+			}
 			sysconfig.PutKey("webcertificate","backend","CUSTOMCERT");
 		}
 		catch (std::runtime_error& e)
