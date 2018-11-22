@@ -73,12 +73,20 @@ public:
 	tuple<string, string> GetFqdn(void);
 
 	/**
+	 * @brief GetFqdn Get system FQDN as string
+	 * @return string FQDN upon success, emtpy string on failure
+	 */
+	string GetFqdnAsString();
+
+
+	/**
 	 * @brief CreateCertificate, create self signed certificate for set
 	 *        hostname and domain.
 	 * @param Force generation of DNS Provider / Self signed certificate
+	 * @param Set the certificate type to sysconfig
 	 * @return true upon success
 	 */
-	bool CreateCertificate(bool forceProvider);
+	bool CreateCertificate(bool forceProvider, string certtype);
 
 	/**
 	 * @brief CreateCertificate, create self signed certificate for set

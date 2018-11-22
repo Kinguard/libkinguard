@@ -1,4 +1,5 @@
 #include "IdentityManager.h"
+#include "MailManager.h"
 
 #include <ext/stdio_filebuf.h>
 
@@ -34,6 +35,7 @@ IdentityManager &IdentityManager::Instance()
 
 bool IdentityManager::SetFqdn(const string &name, const string &domain)
 {
+	string oldFqdn = this->GetFqdnAsString();
 	try {
 		OPI::SysConfig cfg(true);
 		this->hostname = name;
@@ -47,7 +49,11 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 		this->global_error = string("Failed to set hostname :") + err.what();
 		return false;
 	}
-	logg << Logger::Warning << "---  TODO --- Update MailConfig here" << lend;
+
+	logg << Logger::Debug << "Update MailConfig" << lend;
+	MailManager& mailmgr = MailManager::Instance();
+
+	mailmgr.ChangeDomain(oldFqdn,this->GetFqdnAsString());
 	return true;
 }
 
@@ -89,6 +95,18 @@ tuple<string, string> IdentityManager::GetFqdn()
 	}
 
 	return make_tuple(host, domain);
+
+}
+
+string IdentityManager::GetFqdnAsString()
+{
+	// GetHostname reads and sets this->hostname if necessary
+	if (this->GetHostname() != "" && this->GetDomain() != "")
+	{
+		return this->hostname + "." + domain;
+	}
+
+	return "";
 
 }
 
@@ -222,36 +240,41 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 }
 bool IdentityManager::CreateCertificate()
 {
-	return this->CreateCertificate(true);
+	if ( SCFG.HasKey("webcertificate","backend") )
+	{
+		return this->CreateCertificate(true,SCFG.GetKeyAsString("webcertificate","backend"));
+	}
+	return false;
 }
 
-bool IdentityManager::CreateCertificate(bool forceProvider)
+bool IdentityManager::CreateCertificate(bool forceProvider, string certtype)
 {
 
-	OPI::SysConfig cfg;
+	OPI::SysConfig cfg(true);
 	string fqdn = this->GetHostname() + "." + this->GetDomain();
 	string provider;
 
+	cfg.PutKey("webcertificate","backend",certtype);
 	if ( forceProvider )
 	{
-		// generate certificate for provider, or if no provider generate self signed certificate
-		if ( this->HasDnsProvider() ) {
-			provider = cfg.GetKeyAsString("dns","provider");
-			if ( provider == "OpenProducts" )
-			{
-				provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
-			}
-
-			logg << Logger::Debug << "Request certificate from '" << provider << "'"<<lend;
-			if( !this->GetCertificate(fqdn, provider) )
-			{
-				logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
-				return false;
-			}
-		}
-		else
+		try
 		{
-			try
+			// generate certificate for provider, or if no provider generate self signed certificate
+			if ( this->HasDnsProvider() ) {
+				provider = cfg.GetKeyAsString("dns","provider");
+				if ( provider == "OpenProducts" )
+				{
+					provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
+				}
+
+				logg << Logger::Debug << "Request certificate from '" << provider << "'"<<lend;
+				if( !this->GetCertificate(fqdn, provider) )
+				{
+					logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
+					return false;
+				}
+			}
+			else
 			{
 
 				if( ! OPI::CryptoHelper::MakeSelfSignedCert(
@@ -264,12 +287,12 @@ bool IdentityManager::CreateCertificate(bool forceProvider)
 					return false;
 				}
 			}
-			catch (std::runtime_error& err)
-			{
-				logg << Logger::Error << "Failed to generate certificate:" << err.what() << lend;
-				this->global_error = string("Failed to generate certificate:") + err.what();
-				return false;
-			}
+		}
+		catch (std::runtime_error& err)
+		{
+			logg << Logger::Error << "Failed to generate certificate:" << err.what() << lend;
+			this->global_error = string("Failed to generate certificate:") + err.what();
+			return false;
 		}
 	}
 

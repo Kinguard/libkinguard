@@ -1,3 +1,9 @@
+libkinguard (1.0.1) vili; urgency=medium
+
+  * Reworked how custom certificates are handled. 
+
+ -- PA Nilsson <pa@openproducts.se>  Thu, 22 Nov 2018 07:23:45 +0100
+
 libkinguard (1.0.0) unstable; urgency=medium
 
   * Initial Release.
