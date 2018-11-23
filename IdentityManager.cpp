@@ -42,6 +42,8 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 		this->domain = domain;
 		cfg.PutKey("hostinfo","hostname", name);
 		cfg.PutKey("hostinfo","domain", domain);
+
+		File::Write("/etc/mailname", name + "."+ domain, 0644);
 	}
 	catch (std::runtime_error& err)
 	{
@@ -50,10 +52,13 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 		return false;
 	}
 
-	logg << Logger::Debug << "Update MailConfig" << lend;
-	MailManager& mailmgr = MailManager::Instance();
+	if( oldFqdn != "" )
+	{
+		logg << Logger::Debug << "Update MailConfig" << lend;
+		MailManager& mailmgr = MailManager::Instance();
 
-	mailmgr.ChangeDomain(oldFqdn,this->GetFqdnAsString());
+		mailmgr.ChangeDomain(oldFqdn,this->GetFqdnAsString());
+	}
 	return true;
 }
 
@@ -443,35 +448,11 @@ bool IdentityManager::RegisterKeys() {
 	string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
 	string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
 	try{
-		OPI::Secop s;
 
-		s.SockAuth();
-		list<map<string,string>> ids;
-
-		try
+		// If OP device
+		if( this->HasDnsProvider() )
 		{
-			ids = s.AppGetIdentifiers("op-backend");
-		}
-		catch( runtime_error& err )
-		{
-			// Do nothing, appid is missing but thats ok.
-		}
-
-		if( ids.size() == 0 )
-		{
-			logg << Logger::Debug << "No keys in secop" << lend;
-			s.AppAddID("op-backend");
-
-			RSAWrapper ob;
-			ob.GenerateKeys();
-
-			// Write to secop
-			map<string,string> data;
-
-			data["type"] = "backendkeys";
-			data["pubkey"] = Base64Encode(ob.GetPubKeyAsDER());
-			data["privkey"] = Base64Encode(ob.GetPrivKeyAsDER());
-			s.AppAddIdentifier("op-backend", data);
+			AuthServer::Setup();
 
 			logg << Logger::Debug << "Delete (if existing) old private key"<<lend;
 			// sysauth keys shall no longer exist on file.
@@ -483,7 +464,7 @@ bool IdentityManager::RegisterKeys() {
 			}
 		}
 
-
+		// Create "dns"-key
 		string priv_path = File::GetPath( dnsauthkey );
 		if( ! File::DirExists( priv_path ) )
 		{

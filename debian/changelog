@@ -1,3 +1,11 @@
+libkinguard (1.0.2) vili; urgency=medium
+
+  * Set mailname in SetFqdn
+  * Only change domain name if previously set
+  * Rework register keys to use authserver class
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 23 Nov 2018 11:09:34 +0100
+
 libkinguard (1.0.1) vili; urgency=medium
 
   * Reworked how custom certificates are handled. 
