@@ -34,7 +34,7 @@ UserManagerPtr KGP::UserManager::Instance(SecopPtr authdb)
 	return UserManagerPtr(new UserManager(authdb) );
 }
 
-bool UserManager::AddUser(const string &username, const string &password, const string &displayname, bool isAdmin)
+bool UserManager::AddUser(const string &username, const string &password, const string &displayname, bool isAdmin, map<string, string> attributes)
 {
 
 	if( ! this->authdb->CreateUser(username, password, displayname) )
@@ -42,6 +42,12 @@ bool UserManager::AddUser(const string &username, const string &password, const 
 		this->global_error = "Failed to create user (User exists?)";
 		return false;
 	}
+
+	for( const pair<string, string>& attr: attributes )
+	{
+		this->authdb->AddAttribute( username, attr.first, attr.second );
+	}
+
 
 	MailManager &mmgr = MailManager::Instance();
 
@@ -97,7 +103,7 @@ bool UserManager::AddUser(const UserPtr user, const string &password, bool isAdm
 		return false;
 	}
 
-	return this->AddUser( user->GetUsername(), password, user->GetDisplayname(), isAdmin);
+	return this->AddUser( user->GetUsername(), password, user->GetDisplayname(), isAdmin, user->GetAttributes());
 }
 
 UserPtr UserManager::GetUser(const string &username)
@@ -117,7 +123,18 @@ UserPtr UserManager::GetUser(const string &username)
 		logg << Logger::Info << "Missing displayname for "<< username << " ("<< err.what()<<")"<<lend;
 	}
 
-	return UserPtr(new User(username, displayname) );
+	UserPtr user = UserPtr(new User(username, displayname) );
+
+	vector<string> attrs = this->authdb->GetAttributes( username );
+	for(const string& attr: attrs)
+	{
+		if( attr != "displayname" )
+		{
+			user->AddAttribute(attr, this->authdb->GetAttribute(username, attr) );
+		}
+	}
+
+	return user;
 }
 
 bool UserManager::UpdateUser(const UserPtr user)
@@ -132,6 +149,11 @@ bool UserManager::UpdateUser(const UserPtr user)
 	{
 		this->global_error = "Failed to update user";
 		return false;
+	}
+
+	for( const pair<string, string> attr: user->GetAttributes() )
+	{
+		this->authdb->AddAttribute( user->GetUsername(), attr.first, attr.second);
 	}
 
 	return true;
@@ -318,7 +340,7 @@ UserManager::~UserManager()
  *
  */
 
-User::User(const string &username, const string &displayname): username(username), displayname(displayname)
+User::User(const string &username, const string &displayname, map<string, string> attrs): username(username), displayname(displayname),attributes(attrs)
 {
 
 }
@@ -337,6 +359,23 @@ User::User(const Json::Value &userdata)
 
 	this->username = userdata["username"].asString();
 	this->displayname = userdata["displayname"].asString();
+
+	vector<string> members = userdata.getMemberNames();
+	for( const string& member: members)
+	{
+		if( member != "username" && member != "displayname" )
+		{
+			if( userdata[member].isString() )
+			{
+				this->AddAttribute(member, userdata[member].asString() );
+			}
+			else
+			{
+				logg << Logger::Debug << "Malformed attribute to create user " << member<< lend;
+			}
+		}
+	}
+
 }
 
 string User::GetUsername()
@@ -361,6 +400,11 @@ string User::GetAttribute(const string &attr)
 		throw std::runtime_error("Unable to find attribute");
 	}
 	return this->attributes[attr];
+}
+
+map<string, string> User::GetAttributes()
+{
+	return this->attributes;
 }
 
 Json::Value User::ToJson()

@@ -27,7 +27,7 @@ typedef shared_ptr<UserManager> UserManagerPtr;
  * UserName - non updateable attribute that uniquely identifies user in system
  * DisplayName - User readable version of name
  *
- * Custom attributes except noted above not yet supported by backend.
+ * Custom attributes, key value string pairs
  *
  * Note that user password is not part of user attributes and is handled
  * separately
@@ -41,7 +41,7 @@ public:
 	 * @param username
 	 * @param displayname
 	 */
-	User(const string& username, const string& displayname);
+	User(const string& username, const string& displayname, map<string,string> attrs = {});
 
 	/**
 	 * @brief User Creates new user from userdata
@@ -80,6 +80,13 @@ public:
 	string GetAttribute(const string& attr);
 
 	/**
+	 * @brief GetAttributes retrieve all user attributes
+	 *        excluding username and displayname
+	 * @return key value map of attributes
+	 */
+	map<string,string> GetAttributes(void);
+
+	/**
 	 * @brief ToJson serialize user to json object
 	 *
 	 * @return json object with one level key value attributes
@@ -116,9 +123,10 @@ public:
 	 * @param password
 	 * @param displayname Full name of new user
 	 * @param isAdmin If true user is given admin rights, notifications etc
+	 * @param attributes optional key value map with further attributes
 	 * @return true upon success false otherwise
 	 */
-	bool AddUser(const string& username, const string& password, const string& displayname, bool isAdmin);
+	bool AddUser(const string& username, const string& password, const string& displayname, bool isAdmin, map<string,string> attributes = {});
 
 	/**
 	 * @brief AddUser add new user to system
