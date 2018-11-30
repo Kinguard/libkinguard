@@ -1,3 +1,11 @@
+libkinguard (1.0.4) vili; urgency=medium
+
+  * Add UserExists to UserManager
+  * Add force option to MailManager synchronization
+  * Fix spelling
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 30 Nov 2018 09:53:04 +0100
+
 libkinguard (1.0.3) vili; urgency=medium
 
   * Implement generic user attributes

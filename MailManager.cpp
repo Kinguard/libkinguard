@@ -366,13 +366,13 @@ bool MailManager::RemoveUserAliases(const string &user)
 
 // From OPI-B
 // Merge of update_postfix and reload fetchmail
-bool MailManager::Synchronize()
+bool MailManager::Synchronize(bool force)
 {
 	bool p_ret = true; // Postfixreturn
 	bool f_ret = true; // Fetchmailreturn
 	SysConfig sysconfig;
 
-	if( this->postfixupdated )
+	if( this->postfixupdated || force )
 	{
 		bool status;
 		string aliases = sysconfig.GetKeyAsString("filesystem","storagemount") + "/" + sysconfig.GetKeyAsString("mail","vmailbox");
@@ -416,7 +416,7 @@ bool MailManager::Synchronize()
 		}
 	}
 
-	if ( this->fetchmailupdated )
+	if ( this->fetchmailupdated || force )
 	{
 		f_ret = ServiceHelper::Stop( "fetchmail" );
 		f_ret &= ServiceHelper::Start( "fetchmail" );

@@ -117,6 +117,13 @@ public:
 	static UserManagerPtr Instance(OPI::SecopPtr authdb = nullptr);
 
 	/**
+	 * @brief UserExists check if user exists in db
+	 * @param username
+	 * @return true if user exists
+	 */
+	bool UserExists(const string& username);
+
+	/**
 	 * @brief AddUser add new user to system
 	 *			User is added to the system and basic email is setup
 	 * @param username
@@ -231,7 +238,7 @@ public:
 	 * @param member
 	 * @return true upon success
 	 */
-	bool DeleteGroupMembar(const string& group, const string& member);
+	bool DeleteGroupMember(const string& group, const string& member);
 
 	/**
 	 * @brief GetGroupMembers get all members of group

@@ -230,8 +230,10 @@ public:
 	/**
 	 * @brief Synchronize synchronize settings with mailserver
 	 * (Restarts/reloads mailsystem)
+	 * @param force force synchronization
+	 * @return true upon success
 	 */
-	bool Synchronize();
+	bool Synchronize(bool force = false);
 
 	/**
 	 * @brief SetupEnvironment

@@ -34,6 +34,13 @@ UserManagerPtr KGP::UserManager::Instance(SecopPtr authdb)
 	return UserManagerPtr(new UserManager(authdb) );
 }
 
+bool UserManager::UserExists(const string &username)
+{
+	vector<string> users = this->authdb->GetUsers();
+
+	return  std::find(users.begin(), users.end(), username) != users.end();
+}
+
 bool UserManager::AddUser(const string &username, const string &password, const string &displayname, bool isAdmin, map<string, string> attributes)
 {
 
@@ -108,9 +115,8 @@ bool UserManager::AddUser(const UserPtr user, const string &password, bool isAdm
 
 UserPtr UserManager::GetUser(const string &username)
 {
-	vector<string> users = this->authdb->GetUsers();
 
-	if( std::find(users.begin(), users.end(), username) == users.end() )
+	if( ! this->UserExists( username ) )
 	{
 		this->global_error = "User not found";
 		return nullptr;
@@ -301,7 +307,7 @@ bool UserManager::AddGroupMember(const string &group, const string &member)
 	return true;
 }
 
-bool UserManager::DeleteGroupMembar(const string &group, const string &member)
+bool UserManager::DeleteGroupMember(const string &group, const string &member)
 {
 	if( ! this->authdb->RemoveGroupMember(group, member) )
 	{
