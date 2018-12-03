@@ -1,3 +1,11 @@
+libkinguard (1.0.5) vili; urgency=medium
+
+  * MailManager add SetHostname function
+  * Use SetHostname in IdManager
+  * Fix bug in delete fetchmail account
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 03 Dec 2018 15:35:04 +0100
+
 libkinguard (1.0.4) vili; urgency=medium
 
   * Add UserExists to UserManager
