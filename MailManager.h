@@ -63,6 +63,14 @@ public:
 	 */
 	bool RemoveFromAdmin(const string& user);
 
+	/**
+	 * @brief SetHostname set mailsystem hostname
+	 * @param fqdn hostname to set
+	 * @return true upon success
+	 */
+	bool SetHostname(const string& name, const string &domain);
+
+
 	// Domain management
 	/**
 	 * @brief GetDomains Retrieve domains that we accept mail for

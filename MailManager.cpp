@@ -70,6 +70,35 @@ bool MailManager::RemoveFromAdmin(const string &user)
 	return true;
 }
 
+bool MailManager::SetHostname(const string &name, const string& domain)
+{
+	try
+	{
+		File::Write("/etc/mailname", name + "."+ domain, 0644);
+
+		bool res;
+		stringstream cmd;
+		cmd << "/usr/sbin/postconf -e \"myhostname=" << name << "." << domain <<"\"";
+		tie(res, std::ignore) = Process::Exec(cmd.str() );
+
+		if( ! res )
+		{
+			this->global_error = "Failed to update postfix hostname";
+			logg << Logger::Error << this->global_error << lend;
+			return false;
+		}
+
+	}
+	catch (std::runtime_error& err)
+	{
+		this->global_error = string("Failed to set mail hostname: ") + err.what();
+		logg << Logger::Error << this->global_error << lend;
+		return false;
+	}
+
+	return true;
+}
+
 list<string> MailManager::GetDomains()
 {
 	return MailConfig().GetDomains();
@@ -253,6 +282,8 @@ void MailManager::DeleteRemoteAccount(const string &hostname, const string &iden
 	FetchmailConfig fc( FETCHMAILRC );
 
 	fc.DeleteAccount(hostname, identity);
+	fc.WriteConfig();
+
 	this->fetchmailupdated = true;
 }
 
@@ -423,9 +454,12 @@ bool MailManager::Synchronize(bool force)
 
 		if( f_ret)
 		{
+			this->fetchmailupdated = false;
+		}
+		else
+		{
 			this->global_error = "Falied to restart fetchmail";
 			logg << Logger::Error << this->global_error << lend;
-			this->fetchmailupdated = false;
 		}
 	}
 

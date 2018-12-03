@@ -36,6 +36,7 @@ IdentityManager &IdentityManager::Instance()
 bool IdentityManager::SetFqdn(const string &name, const string &domain)
 {
 	string oldFqdn = this->GetFqdnAsString();
+	MailManager& mailmgr = MailManager::Instance();
 	try {
 		OPI::SysConfig cfg(true);
 		this->hostname = name;
@@ -43,7 +44,8 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 		cfg.PutKey("hostinfo","hostname", name);
 		cfg.PutKey("hostinfo","domain", domain);
 
-		File::Write("/etc/mailname", name + "."+ domain, 0644);
+		// Update mail hostname
+		mailmgr.SetHostname(name, domain);
 	}
 	catch (std::runtime_error& err)
 	{
@@ -55,7 +57,6 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 	if( oldFqdn != "" )
 	{
 		logg << Logger::Debug << "Update MailConfig" << lend;
-		MailManager& mailmgr = MailManager::Instance();
 
 		mailmgr.ChangeDomain(oldFqdn,this->GetFqdnAsString());
 	}
