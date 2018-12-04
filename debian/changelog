@@ -1,3 +1,9 @@
+libkinguard (1.0.6) vili; urgency=medium
+
+  * Fix #504 "New uses not added to vmailbox"
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 04 Dec 2018 15:57:10 +0100
+
 libkinguard (1.0.5) vili; urgency=medium
 
   * MailManager add SetHostname function

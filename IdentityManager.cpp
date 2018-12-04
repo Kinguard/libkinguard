@@ -372,9 +372,12 @@ bool IdentityManager::AddDnsName(const string &hostname, const string &domain)
 
 tuple<string, string> IdentityManager::GetCurrentDnsName()
 {
-	string hostname,domain;
-
-	return make_tuple(hostname,domain);
+	// Currently if we have a dns-name it is the same as the hostname.
+	if( this->HasDnsProvider() )
+	{
+		return this->GetFqdn();
+	}
+	return make_tuple("","");
 }
 
 bool IdentityManager::HasDnsProvider(void)

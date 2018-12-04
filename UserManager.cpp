@@ -84,14 +84,25 @@ bool UserManager::AddUser(const string &username, const string &password, const 
 	// Add default email
 	IdentityManager &idmgr = IdentityManager::Instance();
 
+	string host, domain;
 	if( idmgr.HasDnsProvider() )
 	{
-		string host, domain;
 		tie(host, domain) = idmgr.GetCurrentDnsName();
-		if( host!="" && domain != "" )
-		{
-			mmgr.SetAddress(host+"."+domain, username, username);
-		}
+	}
+	else
+	{
+		logg << Logger::Notice << "No dns-provider available, assigning local mail address" << lend;
+		tie(host,domain) = idmgr.GetFqdn();
+	}
+
+	if( host!="" && domain != "" )
+	{
+		logg << Logger::Debug << "Adding address " << username << "@"<< host << "."<<domain << " to " << username << lend;
+		mmgr.SetAddress(host+"."+domain, username, username);
+	}
+	else
+	{
+		logg << Logger::Notice << "No valid hostname, not adding email address to user " << username << lend;
 	}
 
 	if( !mmgr.Synchronize()	)
