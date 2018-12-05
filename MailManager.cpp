@@ -159,6 +159,8 @@ void MailManager::DeleteAddresses(const string &user)
 		}
 
 	}
+	mc.WriteConfig();
+	this->postfixupdated = true;
 
 }
 
@@ -225,7 +227,7 @@ bool MailManager::RemoveLocalAddress(const string &user)
 	const string localmail(SCFG.GetKeyAsString("filesystem", "storagemount")+SCFG.GetKeyAsString("mail", "localmail"));
 	try
 	{
-		// Add user to localdomain mailboxfile
+		// Remove user from localdomain mailboxfile
 
 		OPI::MailMapFile mmf( localmail );
 		mmf.ReadConfig();
