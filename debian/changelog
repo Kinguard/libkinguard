@@ -1,3 +1,9 @@
+libkinguard (1.0.8) vili; urgency=medium
+
+  * Refactor backupmanager to calculate needed passwords.
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 17 Dec 2018 09:55:35 +0100
+
 libkinguard (1.0.7) vili; urgency=medium
 
   * #511 "Remove user does not remove mail address"
