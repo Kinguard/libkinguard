@@ -6,7 +6,6 @@
 
 #include <libopi/SysConfig.h>
 #include <libopi/AuthServer.h>
-#include <libopi/CryptoHelper.h>
 
 #include "StorageManager.h"
 
@@ -20,7 +19,7 @@ using namespace OPI::CryptoHelper;
 namespace KGP
 {
 
-BackupManager::BackupManager(): opprovider(false),hasunitid(false),cfg(Json::nullValue)
+BackupManager::BackupManager(): opprovider(false),hasunitid(false)
 {
 	this->opprovider = ( SCFG.HasKey("dns", "provider") && SCFG.GetKeyAsString("dns", "provider") == "OpenProducts" );
 
@@ -29,6 +28,8 @@ BackupManager::BackupManager(): opprovider(false),hasunitid(false),cfg(Json::nul
 		this->hasunitid = true;
 		this->unitid = SCFG.GetKeyAsString("hostinfo", "unitid");
 	}
+
+	logg << Logger::Notice << "Backupmanager initialized" << lend;
 }
 
 BackupManager &BackupManager::Instance()
@@ -38,18 +39,36 @@ BackupManager &BackupManager::Instance()
 	return mgr;
 }
 
+
+static string GetBackupPassword(const string& password)
+{
+	SecString spass(password.c_str(), password.size() );
+	SecVector<byte> key = PBKDF2( spass, 20);
+	vector<byte> ukey(key.begin(), key.end());
+
+	return Base64Encode( ukey );
+}
+
+static AESWrapperPtr GetBackupCrypto(const string& password)
+{
+	SecVector<byte> key = PBKDF2(SecString(password.c_str(), password.size() ), 32 );
+	return AESWrapperPtr(new AESWrapper(key) );
+}
+
 void BackupManager::Configure(const Json::Value &cfg)
 {
+	ScopedLog l("Configure");
+
 	if( !cfg.isMember("password") || !cfg["password"].isString() )
 	{
 		throw std::runtime_error("Missing password in backup config");
 	}
-
 	BackupManager::Instance().SetConfig(cfg);
 }
 
 Json::Value BackupManager::GetBackups()
 {
+	ScopedLog l("Get backups");
 	if( ! this->backuphelper )
 	{
 		// Make sure we have no leftovers from earlier attempts
@@ -60,12 +79,12 @@ Json::Value BackupManager::GetBackups()
 			logg << Logger::Error << "Failed to set up restore environment"<<lend;
 			return Json::nullValue;
 		}
-		this->backuphelper = BackupHelperPtr( new BackupHelper( this->cfg["password"].asString() ) );
+		this->backuphelper = BackupHelperPtr( new BackupHelper( this->backuppassword ) );
 	}
 	else
 	{
 		// Entered password might have been changed
-		this->backuphelper->SetPassword( this->cfg["password"].asString() );
+		this->backuphelper->SetPassword( this->backuppassword );
 	}
 
 	Json::Value retval;
@@ -193,7 +212,7 @@ BackupManager::~BackupManager()
 
 void BackupManager::CleanupRestoreEnv()
 {
-	logg << Logger::Debug << "Clean up restore environment"<<lend;
+	ScopedLog l("CleanupRestoreEnv");
 
 	if( ! this->opprovider )
 	{
@@ -210,6 +229,8 @@ void BackupManager::CleanupRestoreEnv()
 
 bool BackupManager::SetupRestoreEnv()
 {
+	ScopedLog l("SetupRestoreEnv");
+
 	logg << Logger::Debug << "Setting up environment for restore"<<lend;
 
 	if( ! this->opprovider )
@@ -247,13 +268,7 @@ bool BackupManager::SetupRestoreEnv()
 	}
 
 	challenge = ret["challange"].asString();
-
-	vector<byte> tkey = Base64Decode( this->cfg["password"].asString() );
-	SecVector<byte> key(tkey.begin(), tkey.end() );
-
-	AESWrapper aes( key );
-
-	string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
+	string cryptchal = Base64Encode( this->backupkey->Encrypt( challenge ) );
 
 	tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode( ob.PubKeyAsPEM() ) );
 
@@ -273,8 +288,10 @@ bool BackupManager::SetupRestoreEnv()
 
 void BackupManager::SetConfig(const Json::Value &cfg)
 {
-	this->cfg = cfg;
 	this->WriteConfig();
+
+	this->backuppassword = GetBackupPassword( cfg["password"].asString() );
+	this->backupkey = GetBackupCrypto( cfg["password"].asString() );
 }
 
 void BackupManager::WriteConfig()
@@ -292,15 +309,15 @@ void BackupManager::WriteConfig()
 		<< "storage-url: s3op://\n"
 		<< "backend-login: NotUsed\n"
 		<< "backend-password: NotUsed\n"
-		<< "fs-passphrase: " << this->cfg["password"].asString() <<"\n\n"
+		<< "fs-passphrase: " << this->backuppassword <<"\n\n"
 
 		<< "[local]\n"
 		<< "storage-url: local://\n"
-		<< "fs-passphrase: " << this->cfg["password"].asString() <<endl
+		<< "fs-passphrase: " << this->backuppassword <<endl
 
 		<< "[s3]\n"
 		<< "storage-url: s3://\n"
-		<< "fs-passphrase: " << this->cfg["password"].asString() <<endl;
+		<< "fs-passphrase: " << this->backuppassword <<endl;
 
 
 	File::Write(authfile, ss.str(), 0600 );

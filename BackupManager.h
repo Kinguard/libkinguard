@@ -6,6 +6,8 @@
 #include <libopi/BackupHelper.h>
 #include <libutils/ClassTools.h>
 
+#include <libopi/CryptoHelper.h>
+
 #include <string>
 
 #include <json/json.h>
@@ -26,9 +28,9 @@ public:
 	 * @brief Configure, set current configuration for backup
 	 * @param cfg json value with configuration.
 	 *
-	 * @example currently backup password is required
+	 * @example currently master password is required
 	 *
-	 * { "password" : "secret backup password" }
+	 * { "password" : "secret master password" }
 	 *
 	 */
 	static void Configure(const Json::Value& cfg);
@@ -72,7 +74,9 @@ private:
 	bool opprovider;
 	bool hasunitid;
 	string unitid;
-	Json::Value cfg;
+
+	string backuppassword;
+	OPI::CryptoHelper::AESWrapperPtr backupkey;
 	OPI::BackupHelperPtr backuphelper;
 };
 
