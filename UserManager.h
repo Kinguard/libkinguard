@@ -133,7 +133,7 @@ public:
 	 * @param attributes optional key value map with further attributes
 	 * @return true upon success false otherwise
 	 */
-	bool AddUser(const string& username, const string& password, const string& displayname, bool isAdmin, map<string,string> attributes = {});
+	bool AddUser(const string& username, const string& password, const string& displayname, bool isAdmin, const map<string,string>& attributes = {});
 
 	/**
 	 * @brief AddUser add new user to system

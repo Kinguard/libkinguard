@@ -41,7 +41,7 @@ bool UserManager::UserExists(const string &username)
 	return  std::find(users.begin(), users.end(), username) != users.end();
 }
 
-bool UserManager::AddUser(const string &username, const string &password, const string &displayname, bool isAdmin, map<string, string> attributes)
+bool UserManager::AddUser(const string &username, const string &password, const string &displayname, bool isAdmin, const map<string, string> &attributes)
 {
 
 	if( ! this->authdb->CreateUser(username, password, displayname) )
@@ -50,7 +50,7 @@ bool UserManager::AddUser(const string &username, const string &password, const 
 		return false;
 	}
 
-	for( const pair<string, string>& attr: attributes )
+	for( const pair<string, string> attr: attributes )
 	{
 		this->authdb->AddAttribute( username, attr.first, attr.second );
 	}
