@@ -37,7 +37,9 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 {
 	string oldFqdn = this->GetFqdnAsString();
 	MailManager& mailmgr = MailManager::Instance();
-	try {
+
+	try
+	{
 		OPI::SysConfig cfg(true);
 		this->hostname = name;
 		this->domain = domain;
@@ -54,11 +56,26 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 		return false;
 	}
 
-	if( oldFqdn != "" )
+	try
 	{
-		logg << Logger::Debug << "Update MailConfig" << lend;
+		string newfqdn = this->GetFqdnAsString();
 
-		mailmgr.ChangeDomain(oldFqdn,this->GetFqdnAsString());
+		if( oldFqdn == newfqdn )
+		{
+			logg << Logger::Debug << "New fqdn same as old one, not changing (" << newfqdn << ")" << lend;
+		}
+		else if( oldFqdn != "" )
+		{
+			logg << Logger::Debug << "Update MailConfig" << lend;
+
+			mailmgr.ChangeDomain(oldFqdn, newfqdn);
+		}
+	}
+	catch (std::runtime_error& err)
+	{
+		this->global_error = string("Failed change manilhostname: ") + err.what();
+		logg << Logger::Error << this->global_error << lend;
+		return false;
 	}
 	return true;
 }
