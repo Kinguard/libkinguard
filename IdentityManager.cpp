@@ -319,12 +319,19 @@ bool IdentityManager::CreateCertificate(bool forceProvider, string certtype)
 		}
 	}
 
-	logg << Logger::Debug << "Get signed Certificate for '"<< fqdn <<"'"<<lend;
-	if( ! this->GetSignedCert(fqdn) )
+	if( certtype != "CUSTOMCERT" )
 	{
-		// The call forks a new process and can not really fail, but the generation of the certificate
-		// can fail. But that can not be indicted here...
-		logg << Logger::Notice << "Failed to get launch thread to get signed cert."<<lend;
+		logg << Logger::Debug << "Get signed Certificate for '"<< fqdn <<"'"<<lend;
+		if( ! this->GetSignedCert(fqdn) )
+		{
+			// The call forks a new process and can not really fail, but the generation of the certificate
+			// can fail. But that can not be indicted here...
+			logg << Logger::Notice << "Failed to get launch thread to get signed cert."<<lend;
+		}
+	}
+	else
+	{
+		logg << Logger::Debug << "Custom certficate, not trying to sign" << lend;
 	}
 
 	return true;
