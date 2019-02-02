@@ -1,3 +1,9 @@
+libkinguard (1.0.11) vili; urgency=medium
+
+  * Using fixed path for user web certificate. 
+
+ -- PA Nilsson <pa@openproducts.se>  Sat, 02 Feb 2019 09:43:31 +0100
+
 libkinguard (1.0.10) vili; urgency=medium
 
   * Don't try to get signed cert for custom certificate

@@ -138,7 +138,7 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	SysConfig sysconfig(true);
 
 
-	string CustomCertFile,CustomKeyFile;
+	string CustomCertFile,CustomKeyFile,CustomCertPath;
 	string webcert = sysconfig.GetKeyAsString("webcertificate","activecert");
 	string webkey = sysconfig.GetKeyAsString("webcertificate","activekey");
 
@@ -146,15 +146,17 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	// Generate new filenames
 	logg << Logger::Debug << "Generating new custom cert paths" << lend;
 
-	sprintf( this->tmpfilename,"/etc/opi/usercert/userCertXXXXXX.pem");
 
+	CustomCertPath = "/etc/opi/usercert/";
+	CustomCertFile = CustomCertPath + "cert.pem";
+	CustomKeyFile = CustomCertPath + "privkey.pem";
 	// check that the path exists.
-	if ( ! File::DirExists(File::GetPath(this->tmpfilename)) )
+	if ( ! File::DirExists(CustomCertPath) )
 	{
 		// create paths.
 		try
 		{
-			File::MkPath(File::GetPath(this->tmpfilename),0700);
+			File::MkPath(CustomCertPath,0700);
 		}
 		catch (Utils::ErrnoException& err)
 		{
@@ -164,51 +166,31 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 		}
 	}
 
-	int certfd = mkstemps(this->tmpfilename,4);
+	try {
+		// Write content to userCert files
+		File::Write(CustomCertFile,cert,0644);
 
-	if( certfd <0 )
-	{
-		return make_tuple(false,"Failed to create cert file");
-	}
-	else
-	{
-		CustomCertFile = string(this->tmpfilename);
-		logg << Logger::Debug << "CustomCertFile:" << CustomCertFile<< lend;
-	}
-	// Write content to new files
-	__gnu_cxx::stdio_filebuf<char> certfb( certfd, std::ios::out);
-	ostream scert(&certfb);
-	scert << cert;
-	scert << flush;
-
-	if ( key != "" ) {
-
-		sprintf( this->tmpfilename,"/etc/opi/usercert/userKeyXXXXXX.pem");
-		int keyfd = mkstemps(this->tmpfilename,4);
-
-		if( keyfd <0 )
-		{
-			return make_tuple(false,"Failed to create key file");
+		if ( key != "" ) {
+			File::Write(CustomKeyFile,key,0644);
 		}
 		else
 		{
-			CustomKeyFile = string(this->tmpfilename);
-			logg << Logger::Debug << "CustomKeyFile:" << CustomKeyFile<< lend;
+			// if no key provided, use the existing key
+			// if just the device name is updated, this function is triggered anyway
+			// but the "key" will be empty
+			CustomKeyFile = File::RealPath(webkey);
 		}
-		__gnu_cxx::stdio_filebuf<char> keyfb( keyfd, std::ios::out);
-		ostream skey(&keyfb);
-		skey << key;
-		skey << flush;
 	}
-	else
+	catch (std::runtime_error& err)
 	{
-		CustomKeyFile = File::RealPath(webkey);
+		return make_tuple(false,"Filed to write custom certificate files.");
 	}
 
 	// create a backup copy of the cert symlinks nginx uses
 	string curr_key,curr_cert;
 	curr_key = File::RealPath(webkey);
 	curr_cert = File::RealPath(webcert);
+
 
 	File::Delete(webcert);
 	File::Delete(webkey);
@@ -221,32 +203,7 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	string Message;
 
 	tie(retval,Message)=Process::Exec( "nginx -t" );
-	if ( retval )
-	{
-		try
-		{
-			if (SCFG.HasKey("webcertificate","backend") && (SCFG.GetKeyAsString("webcertificate","backend") == "CUSTOMCERT") )
-			{
-				// previous setup used Custom certificate, delete it
-				logg << Logger::Error << "Removing old certs" << lend;
-				File::Delete(curr_cert);
-				if ( key != "")
-				{
-					// only remove it if it has been replaced
-					File::Delete(curr_key);
-				}
-			}
-			sysconfig.PutKey("webcertificate","backend","CUSTOMCERT");
-		}
-		catch (std::runtime_error& e)
-		{
-			logg << Logger::Error << "Failed to set config parameters" << lend;
-			return make_tuple(false,"Failed to set config parameters");
-		}
-
-		return make_tuple(true,"");
-	}
-	else
+	if ( ! retval )
 	{
 		// nginx config test failed, restore old links
 		logg << Logger::Debug << "Nginx config test failed" << lend;
@@ -261,6 +218,7 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 
 	}
 }
+
 bool IdentityManager::CreateCertificate()
 {
 	if ( SCFG.HasKey("webcertificate","backend") )
