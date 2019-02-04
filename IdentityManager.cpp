@@ -183,7 +183,8 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	}
 	catch (std::runtime_error& err)
 	{
-		return make_tuple(false,"Filed to write custom certificate files.");
+		this->global_error = string("Filed to write custom certificate files: ") +err.what();
+		return make_tuple(false, this->global_error);
 	}
 
 	// create a backup copy of the cert symlinks nginx uses
@@ -217,6 +218,8 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 		return make_tuple(false,"Webserver config test failed with new certificates");
 
 	}
+
+	return make_tuple(true,"");
 }
 
 bool IdentityManager::CreateCertificate()
