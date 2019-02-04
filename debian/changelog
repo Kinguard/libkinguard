@@ -1,3 +1,10 @@
+libkinguard (1.0.12) vili; urgency=medium
+
+  * Fix missing returnvalue in custom cert creation fixing crash on
+    update.
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 04 Feb 2019 15:22:39 +0100
+
 libkinguard (1.0.11) vili; urgency=medium
 
   * Using fixed path for user web certificate. 
