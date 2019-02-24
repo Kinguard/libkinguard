@@ -47,7 +47,11 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 		cfg.PutKey("hostinfo","domain", domain);
 
 		// Update mail hostname
-		mailmgr.SetHostname(name, domain);
+		if( ! mailmgr.SetHostname(name, domain) )
+		{
+			this->global_error = mailmgr.StrError();
+			return false;
+		}
 	}
 	catch (std::runtime_error& err)
 	{
@@ -432,16 +436,17 @@ bool IdentityManager::SetDNSProvider(string provider)
 
 bool IdentityManager::RegisterKeys() {
 	logg << Logger::Debug << "Register keys"<<lend;
-	string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
-	string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
-	string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
-	string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
+
 	try{
 
 		// If OP device
 		if( this->HasDnsProvider() )
 		{
+			// Generate sysauthkeys and register with secop if not present
 			AuthServer::Setup();
+
+			string sysauthkey = SCFG.GetKeyAsString("hostinfo","sysauthkey");
+			string syspubkey = SCFG.GetKeyAsString("hostinfo","syspubkey");
 
 			logg << Logger::Debug << "Delete (if existing) old private key"<<lend;
 			// sysauth keys shall no longer exist on file.
@@ -454,6 +459,11 @@ bool IdentityManager::RegisterKeys() {
 		}
 
 		// Create "dns"-key
+		logg << Logger::Debug << "Checking dns-key, possibly recreating" << lend;
+
+		string dnsauthkey = SCFG.GetKeyAsString("dns","dnsauthkey");
+		string dnspubkey = SCFG.GetKeyAsString("dns","dnspubkey");
+
 		string priv_path = File::GetPath( dnsauthkey );
 		if( ! File::DirExists( priv_path ) )
 		{
@@ -468,26 +478,30 @@ bool IdentityManager::RegisterKeys() {
 
 		if( ! File::FileExists( dnsauthkey) || ! File::FileExists( dnspubkey ) )
 		{
+			logg << Logger::Notice << "Recreating dns key" << lend;
 			RSAWrapper dns;
 			dns.GenerateKeys();
 
-			if ( File::FileExists(sysauthkey)) {
+			if ( File::FileExists(dnsauthkey)) {
 				string olddnsauthkey = File::GetContentAsString( dnsauthkey,true );
 				File::Write(dnsauthkey+".old",olddnsauthkey, 0600 );
 			}
-			if ( File::FileExists(syspubkey)) {
+			if ( File::FileExists(dnspubkey)) {
 				string olddnspubkey = File::GetContentAsString(dnspubkey,true );
 				File::Write(dnspubkey+".old",olddnspubkey, 0644 );
 			}
 
+			File::Delete( dnsauthkey );
 			File::Write(dnsauthkey, dns.PrivKeyAsPEM(), 0600 );
+			File::Delete(dnspubkey);
 			File::Write(dnspubkey, dns.PubKeyAsPEM(), 0644 );
 		}
 
 	}
 	catch( runtime_error& err)
 	{
-		logg << Logger::Notice << "Failed to register keys " << err.what() << lend;
+		this->global_error = string("Failed to register keys: ") + err.what();
+		logg << Logger::Notice << this->global_error << lend;
 		return false;
 	}
 	return true;
