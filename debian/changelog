@@ -1,3 +1,10 @@
+libkinguard (1.0.14) vili; urgency=medium
+
+  * Handle none existant dnskey upon delete
+  * Write config after update in backupmanager
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 28 Feb 2019 14:50:13 +0100
+
 libkinguard (1.0.13) vili; urgency=medium
 
   * Fix bug in IdManager checking wrong key when regenerating dns-keys.

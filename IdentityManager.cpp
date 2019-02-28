@@ -491,9 +491,28 @@ bool IdentityManager::RegisterKeys() {
 				File::Write(dnspubkey+".old",olddnspubkey, 0644 );
 			}
 
-			File::Delete( dnsauthkey );
+			// Make sure we have no keys before writing new ones
+			try
+			{
+				File::Delete( dnsauthkey );
+			}
+			catch (std::runtime_error &err)
+			{
+				// Ok if file does not exist
+				logg << Logger::Debug << "Unable to delete: " << dnsauthkey << " : " << err.what()<< lend;
+			}
+
+			try
+			{
+				File::Delete( dnspubkey );
+			}
+			catch (std::runtime_error &err)
+			{
+				// Ok if file does not exist
+				logg << Logger::Debug << "Unable to delete: " << dnspubkey << " : " << err.what()<< lend;
+			}
+
 			File::Write(dnsauthkey, dns.PrivKeyAsPEM(), 0600 );
-			File::Delete(dnspubkey);
 			File::Write(dnspubkey, dns.PubKeyAsPEM(), 0644 );
 		}
 

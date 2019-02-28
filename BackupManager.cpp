@@ -288,10 +288,10 @@ bool BackupManager::SetupRestoreEnv()
 
 void BackupManager::SetConfig(const Json::Value &cfg)
 {
-	this->WriteConfig();
-
 	this->backuppassword = GetBackupPassword( cfg["password"].asString() );
 	this->backupkey = GetBackupCrypto( cfg["password"].asString() );
+
+	this->WriteConfig();
 }
 
 void BackupManager::WriteConfig()
