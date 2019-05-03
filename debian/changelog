@@ -1,3 +1,10 @@
+libkinguard (1.0.15) vili; urgency=medium
+
+  * BackupManager: Write tempkeys to mmc to allow restore
+    partial fix for #550
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 03 May 2019 14:13:11 +0200
+
 libkinguard (1.0.14) vili; urgency=medium
 
   * Handle none existant dnskey upon delete

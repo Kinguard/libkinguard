@@ -225,6 +225,17 @@ void BackupManager::CleanupRestoreEnv()
 		this->backuphelper->UmountLocal();
 		this->backuphelper->UmountRemote();
 	}
+
+	// Remove any temporarily added keys
+	if( File::FileExists(SCFG.GetKeyAsString("hostinfo","syspubkey")))
+	{
+		File::Delete(SCFG.GetKeyAsString("hostinfo","syspubkey"));
+	}
+
+	if( File::FileExists(SCFG.GetKeyAsString("hostinfo","sysauthkey")))
+	{
+		File::Delete(SCFG.GetKeyAsString("hostinfo","sysauthkey"));
+	}
 }
 
 bool BackupManager::SetupRestoreEnv()
@@ -244,6 +255,9 @@ bool BackupManager::SetupRestoreEnv()
 	// Generate temporary keys to use
 	RSAWrapper ob;
 	ob.GenerateKeys();
+
+	File::Write(SCFG.GetKeyAsString("hostinfo","syspubkey"), ob.PubKeyAsPEM(), 0644);
+	File::Write(SCFG.GetKeyAsString("hostinfo","sysauthkey"), ob.PrivKeyAsPEM(), 0600);
 
 	AuthServer s(this->unitid);
 
