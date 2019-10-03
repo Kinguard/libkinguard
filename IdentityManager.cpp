@@ -382,9 +382,11 @@ bool IdentityManager::EnableDnsProvider(const string &provider)
 		logg << Logger::Notice << "DNS provider " << provider << " not supported"<<lend;
 		return false;
 	}
-	SCFG.PutKey("dns", "provider", "OpenProducts");
+	// We need a writable config
+	OPI::SysConfig cfg(true);
+	cfg.PutKey("dns", "provider", "OpenProducts");
 	list<string> domains({"mykeep.net", "op-i.me"});
-	SCFG.PutKey("dns", "availabledomains", domains);
+	cfg.PutKey("dns", "availabledomains", domains);
 
 	return true;
 }

@@ -1,3 +1,9 @@
+libkinguard (1.0.18) vili; urgency=medium
+
+  * Use writable config
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 03 Oct 2019 21:23:21 +0200
+
 libkinguard (1.0.17) vili; urgency=medium
 
   * Add enable dns-provider to id-manager
