@@ -141,6 +141,14 @@ public:
 	bool HasDnsProvider(void);
 
 	/**
+	 * @brief EnableDnsProvider enable dns provider
+	 * @param provider
+	 * @return true upon success
+	 */
+	bool EnableDnsProvider(const string& provider);
+
+
+	/**
 	 * @brief DNSAvailableDomains list available dns-domains
 	 * @return list with domains
 	 */

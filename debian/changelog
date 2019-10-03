@@ -1,3 +1,15 @@
+libkinguard (1.0.17) vili; urgency=medium
+
+  * Add enable dns-provider to id-manager
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 03 Oct 2019 19:12:54 +0200
+
+libkinguard (1.0.16) vili; urgency=medium
+
+  * Buster updates
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 29 Aug 2019 09:27:31 +0200
+
 libkinguard (1.0.15) vili; urgency=medium
 
   * BackupManager: Write tempkeys to mmc to allow restore

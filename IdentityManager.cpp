@@ -374,6 +374,21 @@ bool IdentityManager::HasDnsProvider(void)
 	return ( SCFG.HasKey("dns", "provider") && SCFG.GetKeyAsString("dns", "provider") == "OpenProducts" );
 }
 
+bool IdentityManager::EnableDnsProvider(const string &provider)
+{
+	// Currently only OP supported
+	if( provider != "OpenProducts" )
+	{
+		logg << Logger::Notice << "DNS provider " << provider << " not supported"<<lend;
+		return false;
+	}
+	SCFG.PutKey("dns", "provider", "OpenProducts");
+	list<string> domains({"mykeep.net", "op-i.me"});
+	SCFG.PutKey("dns", "availabledomains", domains);
+
+	return true;
+}
+
 list<string> IdentityManager::DnsAvailableDomains()
 {
 	list<string> domains;
