@@ -52,6 +52,10 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 			this->global_error = mailmgr.StrError();
 			return false;
 		}
+
+		// Update system hostname
+		File::Write("/etc/hostname", this->hostname, 0644);
+
 	}
 	catch (std::runtime_error& err)
 	{
@@ -262,18 +266,17 @@ bool IdentityManager::CreateCertificate(bool forceProvider, string certtype)
 					return false;
 				}
 			}
-			else
-			{
 
-				if( ! OPI::CryptoHelper::MakeSelfSignedCert(
-							cfg.GetKeyAsString("dns","dnsauthkey"),
-							cfg.GetKeyAsString("hostinfo","syscert"),
-							fqdn,
-							cfg.GetKeyAsString("hostinfo","hostname")
-							) )
-				{
-					return false;
-				}
+			// Always genereate self signed server certificate, used as long as no LE-cert or similar present
+			if( ! OPI::CryptoHelper::MakeSelfSignedCert(
+						cfg.GetKeyAsString("dns","dnsauthkey"),
+						cfg.GetKeyAsString("webcertificate","defaultcert"),
+						fqdn,
+						cfg.GetKeyAsString("hostinfo","hostname")
+						) )
+			{
+				logg << Logger::Error << "Failed to create self signed server certificate" << lend;
+				return false;
 			}
 		}
 		catch (std::runtime_error& err)

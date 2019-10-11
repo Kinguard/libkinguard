@@ -1,3 +1,11 @@
+libkinguard (1.0.19) vili; urgency=medium
+
+  * Set hostname on system as well when updating
+  * Change filename of selfsigned certificate to match
+    changes on other places
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 11 Oct 2019 13:28:36 +0200
+
 libkinguard (1.0.18) vili; urgency=medium
 
   * Use writable config
