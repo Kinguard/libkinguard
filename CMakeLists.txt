@@ -34,6 +34,7 @@ set( headers
 	IdentityManager.h
 	MailManager.h
 	StorageManager.h
+	SystemManager.h
 	UserManager.h
 	"${PROJECT_BINARY_DIR}/Config.h"
 	)
@@ -44,6 +45,7 @@ set( src
 	IdentityManager.cpp
 	MailManager.cpp
 	StorageManager.cpp
+	SystemManager.cpp
 	UserManager.cpp
 	)
 

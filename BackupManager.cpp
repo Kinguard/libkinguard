@@ -3,9 +3,12 @@
 
 #include <libutils/Logger.h>
 #include <libutils/FileUtils.h>
+#include <libutils/Process.h>
 
 #include <libopi/SysConfig.h>
 #include <libopi/AuthServer.h>
+
+#include <sys/file.h>
 
 #include "StorageManager.h"
 
@@ -203,6 +206,58 @@ bool BackupManager::RestoreBackup(const string &backup, const string &targetpath
 	logg << Logger::Debug << "Restore completed sucessfully"<<lend;
 
 	return true;
+}
+
+bool BackupManager::StartBackup()
+{
+	ScopedLog l("StartBackup");
+
+	try
+	{
+
+		if( BackupManager::InProgress() )
+		{
+			logg << Logger::Notice << "Backup already in progress, don't start" << lend;
+			return false;
+		}
+
+		Process::Spawn("/usr/share/opi-backup/opi_backup.sh");
+	}
+	catch (ErrnoException& err)
+	{
+		logg << Logger::Notice << "Failed to start backup: " << err.what() << lend;
+		return false;
+	}
+	return true;
+}
+
+bool BackupManager::InProgress()
+{
+	ScopedLog l("BackupInProgress");
+	bool ret = false;
+#define LOCKFILE  "/var/run/lock/kgp-backup.lock"
+
+	if( ! File::FileExists(LOCKFILE) )
+	{
+		return ret;
+	}
+
+	int fd = open(LOCKFILE, O_RDONLY);
+	if (fd < 0 )
+	{
+		throw ErrnoException("Failed to open lockfile");
+	}
+
+	int lockstatus = flock(fd, LOCK_EX | LOCK_NB);
+
+	if( lockstatus < 0 && errno == EWOULDBLOCK )
+	{
+		ret = true;
+	}
+
+	close(fd);
+
+	return ret;
 }
 
 BackupManager::~BackupManager()

@@ -52,6 +52,17 @@ public:
 	 */
 	bool RestoreBackup(const string& backup, const string& targetpath = "");
 
+	/**
+	 * @brief StartBackup immediately try start a backup in the background
+	 * @return true if command issued ok
+	 */
+	static bool StartBackup(void);
+
+	/**
+	 * @brief InProgress  check if backup currently running
+	 * @return true if backup is in progress, false otherwise
+	 */
+	static bool InProgress(void);
 
 	virtual ~BackupManager();
 
