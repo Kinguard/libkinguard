@@ -104,3 +104,8 @@ void SystemManager::StartUpdate()
 		logg << Logger::Notice << "Failed to start update ("<< err.what()<<")" << lend;
 	}
 }
+
+SystemManager::~SystemManager()
+{
+
+}
