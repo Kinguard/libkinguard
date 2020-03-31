@@ -4,10 +4,11 @@ cmake_minimum_required(VERSION 2.6)
 
 include( FindPkgConfig )
 pkg_check_modules ( LIBOPI REQUIRED libopi>=1.6.49 )
+pkg_check_modules ( LIBUTILS REQUIRED libutils>=1.5.19 )
 
 set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
-set (VERSION_PATCH 18)
+set (VERSION_PATCH 20)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}")
 set (VERSION_FULL "${VERSION}.${VERSION_PATCH}")
 set (APP_NAME "lib${PROJECT_NAME}")
