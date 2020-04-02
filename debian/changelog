@@ -1,3 +1,11 @@
+libkinguard (1.0.20) vili; urgency=medium
+
+  * Add SystemManager class
+  * Add method to start backup into BackupManager
+  * Add method to check if backup is in progress to BackupManager
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 31 Mar 2020 16:16:09 +0200
+
 libkinguard (1.0.19) vili; urgency=medium
 
   * Set hostname on system as well when updating
