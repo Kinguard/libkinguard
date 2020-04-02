@@ -92,10 +92,12 @@ void SystemManager::StartUpdate()
 	{
 		if( File::FileExists("/usr/share/opi-updates/kgp-update") )
 		{
+			logg << Logger::Debug << "Try executing /usr/share/opi-updates/kgp-update"<<lend;
 			Process::Spawn("/usr/share/opi-updates/kgp-update");
 		}
 		else
 		{
+			logg << Logger::Debug << "Try executing /usr/share/opi-updates/opi-dist-upgrade.sh"<<lend;
 			Process::Spawn("/usr/share/opi-updates/opi-dist-upgrade.sh");
 		}
 	}
