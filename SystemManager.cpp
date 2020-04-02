@@ -50,7 +50,7 @@ tuple<bool, string> SystemManager::UpgradeAvailable()
 		return make_tuple(false,"");
 	}
 
-	if( ! val.isMember("status") || !val["member"].isBool() )
+	if( ! val.isMember("status") || !val["status"].isBool() )
 	{
 		logg << Logger::Debug << "Missing status from checker script" << lend;
 		return make_tuple(false,"");
