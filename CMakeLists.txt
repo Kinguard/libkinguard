@@ -34,6 +34,7 @@ set( headers
 	BaseManager.h
 	IdentityManager.h
 	MailManager.h
+	NetworkManager.h
 	StorageManager.h
 	SystemManager.h
 	UserManager.h
@@ -45,6 +46,7 @@ set( src
 	BaseManager.cpp
 	IdentityManager.cpp
 	MailManager.cpp
+	NetworkManager.cpp
 	StorageManager.cpp
 	SystemManager.cpp
 	UserManager.cpp
