@@ -16,7 +16,7 @@ using namespace std;
 namespace KGP {
 
 class UserManager;
-typedef shared_ptr<UserManager> UserManagerPtr;
+typedef shared_ptr<UserManager>  UserManagerPtr;
 
 /**
  * @brief The User class
@@ -41,7 +41,7 @@ public:
 	 * @param username
 	 * @param displayname
 	 */
-	User(const string& username, const string& displayname, map<string,string> attrs = {});
+	User(string  username, string  displayname, map<string,string> attrs = {});
 
 	/**
 	 * @brief User Creates new user from userdata
@@ -93,7 +93,7 @@ public:
 	 */
 	Json::Value ToJson(void);
 
-	virtual ~User();
+	virtual ~User() = default;
 private:
 	string username;
 	string displayname;
@@ -142,7 +142,7 @@ public:
 	 * @param isAdmin is this user an admin user?
 	 * @return true upon success
 	 */
-	bool AddUser(const UserPtr user, const string& password, bool isAdmin);
+	bool AddUser(const UserPtr &user, const string& password, bool isAdmin);
 
 	/**
 	 * @brief GetUser retrieve userinfo on user
@@ -156,7 +156,7 @@ public:
 	 * @param user userobject to use for update, username must exist
 	 * @return true upon success
 	 */
-	bool UpdateUser(const UserPtr user);
+	bool UpdateUser(const UserPtr& user);
 
 	/**
 	 * @brief DeleteUser delete user from system
@@ -170,7 +170,7 @@ public:
 	 * @param user
 	 * @return true upon success
 	 */
-	bool DeleteUser(const UserPtr user);
+	bool DeleteUser(const UserPtr& user);
 
 	/**
 	 * @brief UpdateUserPassword
@@ -248,7 +248,7 @@ public:
 	list<string> GetGroupMembers(const string& group);
 
 
-	virtual ~UserManager();
+	virtual ~UserManager() = default;
 private:
 	OPI::SecopPtr authdb;
 };

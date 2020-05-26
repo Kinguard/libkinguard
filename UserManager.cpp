@@ -3,6 +3,8 @@
 #include "IdentityManager.h"
 
 #include <algorithm>
+#include <memory>
+#include <utility>
 
 #include <libutils/FileUtils.h>
 #include <libopi/JsonHelper.h>
@@ -13,25 +15,24 @@
 
 #define SCFG	(OPI::SysConfig())
 
-
 using namespace OPI;
 using namespace Utils;
 using namespace std;
 
 namespace KGP {
 
-UserManager::UserManager(SecopPtr authdb):authdb(authdb)
+UserManager::UserManager(SecopPtr authdb):authdb(std::move(authdb))
 {
 	if( ! this->authdb )
 	{
-		this->authdb = SecopPtr(new Secop());
+		this->authdb = std::make_shared<Secop>();
 		this->authdb->SockAuth();
 	}
 }
 
 UserManagerPtr KGP::UserManager::Instance(SecopPtr authdb)
 {
-	return UserManagerPtr(new UserManager(authdb) );
+	return UserManagerPtr(new UserManager(std::move(authdb)) );
 }
 
 bool UserManager::UserExists(const string &username)
@@ -50,7 +51,7 @@ bool UserManager::AddUser(const string &username, const string &password, const 
 		return false;
 	}
 
-	for( const pair<string, string> attr: attributes )
+	for( const pair<const string, string>& attr: attributes )
 	{
 		this->authdb->AddAttribute( username, attr.first, attr.second );
 	}
@@ -114,7 +115,7 @@ bool UserManager::AddUser(const string &username, const string &password, const 
 	return true;
 }
 
-bool UserManager::AddUser(const UserPtr user, const string &password, bool isAdmin)
+bool UserManager::AddUser(const UserPtr& user, const string &password, bool isAdmin)
 {
 	if( user == nullptr )
 	{
@@ -140,7 +141,7 @@ UserPtr UserManager::GetUser(const string &username)
 		logg << Logger::Info << "Missing displayname for "<< username << " ("<< err.what()<<")"<<lend;
 	}
 
-	UserPtr user = UserPtr(new User(username, displayname) );
+	UserPtr user = std::make_shared<User>(username, displayname );
 
 	vector<string> attrs = this->authdb->GetAttributes( username );
 	for(const string& attr: attrs)
@@ -154,7 +155,7 @@ UserPtr UserManager::GetUser(const string &username)
 	return user;
 }
 
-bool UserManager::UpdateUser(const UserPtr user)
+bool UserManager::UpdateUser(const UserPtr& user)
 {
 	if( user == nullptr || user->GetUsername() == "" )
 	{
@@ -168,7 +169,7 @@ bool UserManager::UpdateUser(const UserPtr user)
 		return false;
 	}
 
-	for( const pair<string, string> attr: user->GetAttributes() )
+	for( const pair<const string,string>& attr: user->GetAttributes() )
 	{
 		this->authdb->AddAttribute( user->GetUsername(), attr.first, attr.second);
 	}
@@ -215,7 +216,7 @@ bool UserManager::DeleteUser(const string &user)
 	return true;
 }
 
-bool UserManager::DeleteUser(const UserPtr user)
+bool UserManager::DeleteUser(const UserPtr& user)
 {
 	if( user == nullptr || user->GetUsername() == "")
 	{
@@ -346,10 +347,6 @@ list<string> UserManager::GetGroupMembers(const string &group)
 	return list<string>(members.begin(), members.end());
 }
 
-UserManager::~UserManager()
-{
-
-}
 
 /*
  *
@@ -357,7 +354,7 @@ UserManager::~UserManager()
  *
  */
 
-User::User(const string &username, const string &displayname, map<string, string> attrs): username(username), displayname(displayname),attributes(attrs)
+User::User(string username, string displayname, map<string, string> attrs): username(std::move(username)), displayname(std::move(displayname)),attributes(std::move(attrs))
 {
 
 }
@@ -432,11 +429,6 @@ Json::Value User::ToJson()
 	ret["displayname"] = this->displayname;
 
 	return ret;
-}
-
-User::~User()
-{
-
 }
 
 } // Namespace KGP
