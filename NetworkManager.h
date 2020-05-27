@@ -50,7 +50,7 @@ public:
 	 * @param gateway
 	 * @param dns - list with dnss
 	 */
-	void StaticConfiguration(const string& interface,
+	bool StaticConfiguration(const string& interface,
 							 const string& ip,
 							 const string& netmask,
 							 const string& gateway,
@@ -60,7 +60,7 @@ public:
 	 * @brief DynamicConfiguration set dynamic configuration on interface
 	 * @param interface
 	 */
-	void DynamicConfiguration(const string& interface);
+	bool DynamicConfiguration(const string& interface);
 
 	virtual ~NetworkManager() = default;
 private:

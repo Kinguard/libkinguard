@@ -60,20 +60,20 @@ Json::Value NetworkManager::GetConfiguration(const string &interface)
 	return this->net->GetInterface(interface);
 }
 
-void NetworkManager::StaticConfiguration(const string &interface, const string &ip, const string &netmask, const string &gateway, const list<string> dns)
+bool NetworkManager::StaticConfiguration(const string &interface, const string &ip, const string &netmask, const string &gateway, const list<string> dns)
 {
 	this->net->SetStatic(interface,ip, netmask, gateway, dns);
 	this->net->WriteConfig();
 
-	OPI::NetUtils::RestartInterface(interface);
+	return OPI::NetUtils::RestartInterface(interface);
 }
 
-void NetworkManager::DynamicConfiguration(const string &interface)
+bool NetworkManager::DynamicConfiguration(const string &interface)
 {
 	this->net->SetDHCP(interface);
 	this->net->WriteConfig();
 
-	OPI::NetUtils::RestartInterface(interface);
+	return OPI::NetUtils::RestartInterface(interface);
 }
 
 } // KGP
