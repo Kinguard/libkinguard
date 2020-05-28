@@ -64,8 +64,7 @@ bool NetworkManager::StaticConfiguration(const string &interface, const string &
 {
 	this->net->SetStatic(interface,ip, netmask, gateway, dns);
 	this->net->WriteConfig();
-
-	return OPI::NetUtils::RestartInterface(interface);
+	return this->net->RestartInterface( interface );
 }
 
 bool NetworkManager::DynamicConfiguration(const string &interface)
@@ -73,7 +72,7 @@ bool NetworkManager::DynamicConfiguration(const string &interface)
 	this->net->SetDHCP(interface);
 	this->net->WriteConfig();
 
-	return OPI::NetUtils::RestartInterface(interface);
+	return this->net->RestartInterface( interface );
 }
 
 } // KGP
