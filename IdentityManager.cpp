@@ -251,6 +251,29 @@ bool IdentityManager::CreateCertificate(bool forceProvider, string certtype)
 	{
 		try
 		{
+			// Always genereate self signed server certificate, used as long as no LE-cert or similar present
+			if( ! OPI::CryptoHelper::MakeSelfSignedCert(
+						cfg.GetKeyAsString("dns","dnsauthkey"),
+						cfg.GetKeyAsString("webcertificate","defaultcert"),
+						fqdn,
+						cfg.GetKeyAsString("hostinfo","hostname")
+						) )
+			{
+				logg << Logger::Error << "Failed to create self signed server certificate" << lend;
+				return false;
+			}
+
+			// Also use this cert as the default OPI-cert. This will be replaced below if we have
+			// a valid provider.
+			string syscert = SCFG.GetKeyAsString("hostinfo","syscert");
+
+			unlink( syscert.c_str() );
+
+			if( symlink( cfg.GetKeyAsString("webcertificate","defaultcert").c_str(), syscert.c_str() ) < 0)
+			{
+				logg << Logger::Error << "Failed to symlink selfsigned cert" << lend;
+			}
+
 			// generate certificate for provider, or if no provider generate self signed certificate
 			if ( this->HasDnsProvider() ) {
 				provider = cfg.GetKeyAsString("dns","provider");
@@ -267,17 +290,6 @@ bool IdentityManager::CreateCertificate(bool forceProvider, string certtype)
 				}
 			}
 
-			// Always genereate self signed server certificate, used as long as no LE-cert or similar present
-			if( ! OPI::CryptoHelper::MakeSelfSignedCert(
-						cfg.GetKeyAsString("dns","dnsauthkey"),
-						cfg.GetKeyAsString("webcertificate","defaultcert"),
-						fqdn,
-						cfg.GetKeyAsString("hostinfo","hostname")
-						) )
-			{
-				logg << Logger::Error << "Failed to create self signed server certificate" << lend;
-				return false;
-			}
 		}
 		catch (std::runtime_error& err)
 		{
