@@ -3,15 +3,16 @@
 
 #include <ext/stdio_filebuf.h>
 
+#include <libutils/FileUtils.h>
 #include <libutils/Logger.h>
 #include <libutils/String.h>
 #include <libutils/Process.h>
-#include <libutils/FileUtils.h>
 
+#include <libopi/HostsConfig.h>
 #include <libopi/AuthServer.h>
-#include <libopi/Secop.h>
-#include <libopi/SysConfig.h>
 #include <libopi/DnsServer.h>
+#include <libopi/SysConfig.h>
+#include <libopi/Secop.h>
 
 using namespace Utils;
 using namespace OPI;
@@ -36,6 +37,7 @@ IdentityManager &IdentityManager::Instance()
 bool IdentityManager::SetFqdn(const string &name, const string &domain)
 {
 	string oldFqdn = this->GetFqdnAsString();
+
 	MailManager& mailmgr = MailManager::Instance();
 
 	try
@@ -52,6 +54,19 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 			this->global_error = mailmgr.StrError();
 			return false;
 		}
+
+		// Update /etc/hosts
+		OPI::HostsConfig hosts;
+
+		// Check if we have old host
+		HostEntryPtr host = hosts.GetEntryByAddress("127.0.1.1");
+		if( host )
+		{
+			hosts.DeleteEntry(host);
+		}
+		hosts.AddEntry("127.0.1.1", name+"."+domain, {name});
+
+		hosts.WriteBack();
 
 		// Update system hostname
 		File::Write("/etc/hostname", this->hostname, 0644);
