@@ -10,19 +10,25 @@
 
 #include <libopi/HostsConfig.h>
 #include <libopi/AuthServer.h>
+#include <libopi/HttpStatusCodes.h>
 #include <libopi/DnsServer.h>
 #include <libopi/SysConfig.h>
 #include <libopi/Secop.h>
 
+#include <unistd.h>
+
+#include <utility>
+
 using namespace Utils;
 using namespace OPI;
+using namespace OPI::HTTP;
 
 #define SCFG	(OPI::SysConfig())
 
 namespace KGP
 {
 
-IdentityManager::IdentityManager()
+IdentityManager::IdentityManager(): tmpfilename("")
 {
 
 }
@@ -42,6 +48,18 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 
 	try
 	{
+		if( sethostname(name.c_str(), name.length()) == -1)
+		{
+			this->global_error = string("Failed to set hostname:") + strerror(errno);
+			return false;
+		}
+
+		if( setdomainname(domain.c_str(), domain.length()) == -1)
+		{
+			this->global_error = string("Failed to set domainname:") + strerror(errno);
+			return false;
+		}
+
 		OPI::SysConfig cfg(true);
 		this->hostname = name;
 		this->domain = domain;
@@ -156,7 +174,7 @@ string IdentityManager::GetFqdnAsString()
 
 }
 
-tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string cert)
+tuple<bool,string> IdentityManager::WriteCustomCertificate(const string &key, const string &cert)
 {
 	SysConfig sysconfig(true);
 
@@ -223,7 +241,7 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(string key, string ce
 	ignore = symlink(CustomKeyFile.c_str(),webkey.c_str());
 
 	// new links should now be in place, let nginx test the config
-	int retval;
+	int retval =0;
 	string Message;
 
 	tie(retval,Message)=Process::Exec( "nginx -t" );
@@ -254,7 +272,7 @@ bool IdentityManager::CreateCertificate()
 	return false;
 }
 
-bool IdentityManager::CreateCertificate(bool forceProvider, string certtype)
+bool IdentityManager::CreateCertificate(bool forceProvider, const string &certtype)
 {
 
 	OPI::SysConfig cfg(true);
@@ -335,17 +353,17 @@ bool IdentityManager::CreateCertificate(bool forceProvider, string certtype)
 bool IdentityManager::DnsNameAvailable(const string &hostname, const string &domain)
 {
 	OPI::DnsServer dns;
-	int result_code;
+	int result_code = 0;
 	Json::Value ret;
 	tie(result_code, ret) = dns.CheckOPIName( hostname +"."+ domain );
 
-	if( result_code != 200 && result_code != 403 )
+	if( result_code != Status::Ok && result_code != Status::Forbidden )
 	{
 		logg << Logger::Notice << "Request for DNS check name failed" << lend;
 		return false;
 	}
 
-	return result_code == 200;
+	return result_code == Status::Ok;
 }
 
 bool IdentityManager::DnsDomainAvailable(const string &domain)
@@ -399,7 +417,7 @@ tuple<string, string> IdentityManager::GetCurrentDnsName()
 	return make_tuple("","");
 }
 
-bool IdentityManager::HasDnsProvider(void)
+bool IdentityManager::HasDnsProvider()
 {
 	return ( SCFG.HasKey("dns", "provider") && SCFG.GetKeyAsString("dns", "provider") == "OpenProducts" );
 }
@@ -463,7 +481,7 @@ bool IdentityManager::EnableDNS()
 	}
 }
 
-bool IdentityManager::SetDNSProvider(string provider)
+bool IdentityManager::SetDNSProvider(const string &provider)
 {
 	// set and enable dns provider
 	try {
@@ -573,22 +591,22 @@ bool IdentityManager::RegisterKeys() {
 	return true;
 }
 
-tuple<bool,string> IdentityManager::UploadKeys(string unitid,string mpwd)
+tuple<bool,string> IdentityManager::UploadKeys(const string &unitid, const string &mpwd)
 {
 	AuthServer s(unitid);
-	int resultcode;
+	int resultcode = 0;
 	string token;
 	Json::Value ret;
 
 	tie(resultcode, ret) = s.Login();
 	logg << Logger::Debug << "Login resultcode from server: " << resultcode <<lend;
 
-	if( resultcode != 200 && resultcode != 403 && resultcode != 503)
+	if( resultcode != Status::Ok && resultcode != Status::Forbidden && resultcode != Status::ServiceUnavailable)
 	{
 		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
 		return make_tuple(false,"");
 	}
-	if( resultcode == 503 )
+	if( resultcode == Status::ServiceUnavailable )
 	{
 		// keys are missing in secop, register new keys in secop.
 		if ( ! this->RegisterKeys() )
@@ -599,14 +617,14 @@ tuple<bool,string> IdentityManager::UploadKeys(string unitid,string mpwd)
 		// try to login again
 		tie(resultcode, ret) = s.Login();
 		logg << Logger::Debug << "Retry Login resultcode from server: " << resultcode <<lend;
-		if( resultcode != 200 && resultcode != 403 )
+		if( resultcode != Status::Ok && resultcode != Status::Forbidden )
 		{
 			logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
 			return make_tuple(false,"");
 		}
 	}
 
-	if( resultcode == 403  || resultcode == 503 )
+	if( resultcode == Status::Forbidden  || resultcode == Status::ServiceUnavailable )
 	{
 		logg << Logger::Debug << "Send Secret"<<lend;
 
@@ -627,9 +645,9 @@ tuple<bool,string> IdentityManager::UploadKeys(string unitid,string mpwd)
 		string cryptchal = Base64Encode( aes.Encrypt( challenge ) );
 
 		tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode(c->PubKeyAsPEM()) );
-		if( resultcode != 200 )
+		if( resultcode != Status::Ok )
 		{
-			if( resultcode == 403)
+			if( resultcode == Status::Forbidden)
 			{
 				logg << Logger::Debug << "Access denied to OP servers"<<lend;
 				return make_tuple(false,"");
@@ -686,18 +704,14 @@ void IdentityManager::CleanUp()
 	}
 }
 
-IdentityManager::~IdentityManager()
-{
 
-}
-
-bool IdentityManager::UploadDnsKey(string unitid, string token)
+bool IdentityManager::UploadDnsKey(const string& unitid, const string& token)
 {
 	logg << Logger::Error<< "Received token from server: " << token <<lend;
 
 	// Try to upload dns-key
 	stringstream pk;
-	for( auto row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
+	for( const auto& row: File::GetContent(SCFG.GetKeyAsString("dns","dnspubkey")) )
 	{
 		pk << row << "\n";
 	}
@@ -741,11 +755,11 @@ bool IdentityManager::GetCertificate(const string &fqdn, const string &provider)
 
 	AuthServer s(this->unitid);
 
-	int resultcode;
+	int resultcode = 0;
 	Json::Value ret;
 	tie(resultcode, ret) = s.GetCertificate(csr,this->token );
 
-	if( resultcode != 200 )
+	if( resultcode != Status::Ok )
 	{
 		logg << Logger::Error << "Failed to get csr "<<resultcode <<lend;
 		this->global_error = "Failed to get certificate from OP servers";
@@ -771,11 +785,11 @@ bool IdentityManager::GetCertificate(const string &fqdn, const string &provider)
 class SignerThread: public Utils::Thread
 {
 public:
-	SignerThread(const string& name): Thread(false), opiname(name) {}
+	SignerThread(string  name): Thread(false), opiname(std::move(name)), result(true) {}
 
-	virtual void Run();
+	void Run() override;
 	bool Result();
-	virtual ~SignerThread();
+	~SignerThread() override;
 private:
 	string opiname;
 	bool result;
@@ -833,19 +847,19 @@ bool IdentityManager::OPLogin()
 	logg << Logger::Debug << "Do OP login" << lend;
 
 	AuthServer s( this->unitid);
-	int resultcode;
+	int resultcode = 0;
 	Json::Value ret;
 
 	tie(resultcode, ret) = s.Login();
 
-	if( resultcode != 200 && resultcode != 403 )
+	if( resultcode != Status::Ok && resultcode != Status::Forbidden )
 	{
 		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
 		this->global_error ="Unexpected reply from OP server ("+ ret["desc"].asString()+")";
 		return false;
 	}
 
-	if( resultcode == 403)
+	if( resultcode == Status::Forbidden)
 	{
 		this->global_error ="Failed to authenticate with OP server. Wrong activation code or password.";
 		return false;

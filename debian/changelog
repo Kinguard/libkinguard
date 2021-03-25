@@ -1,3 +1,10 @@
+libkinguard (1.0.21) vili; urgency=medium
+
+  * Update idmanager setfqdn to inform kernel on namechange
+  * Misc cleanups
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 25 Mar 2021 11:53:10 +0100
+
 libkinguard (1.0.20) vili; urgency=medium
 
   * Add SystemManager class

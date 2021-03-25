@@ -86,7 +86,7 @@ public:
 	 * @param Set the certificate type to sysconfig
 	 * @return true upon success
 	 */
-	bool CreateCertificate(bool forceProvider, string certtype);
+	bool CreateCertificate(bool forceProvider, const string& certtype);
 
 	/**
 	 * @brief CreateCertificate, create self signed certificate for set
@@ -101,7 +101,7 @@ public:
 	 * @param certificate
 	 * @return true upon success
 	 */
-	tuple<bool,string>  WriteCustomCertificate(string key, string cert);
+	tuple<bool,string>  WriteCustomCertificate(const string& key, const string& cert);
 
 	/**
 	 * @brief DnsNameAvailable Check availability of dns-name
@@ -138,7 +138,7 @@ public:
 	 * @brief HasDNSProvider
 	 * @return true if there is at least one provider
 	 */
-	bool HasDnsProvider(void);
+	bool HasDnsProvider();
 
 	/**
 	 * @brief EnableDnsProvider enable dns provider
@@ -159,7 +159,7 @@ public:
 	 * @param provider
 	 * @return true if possible to set provider
 	 */
-	bool SetDNSProvider(string provider);
+	bool SetDNSProvider(const string& provider);
 
 	/**
 	 * @brief EnableDNSProvider Enable currently configured DNS Provider
@@ -186,7 +186,7 @@ public:
 	 * @param mpwd password to use to sign the keys
 	 * @return true if successful
 	 */
-	tuple<bool,string> UploadKeys(string unitid, string mpwd);
+	tuple<bool,string> UploadKeys(const string& unitid, const string& mpwd);
 
 	/**
 	 * @brief CleanUp clean up environment if needed
@@ -194,7 +194,7 @@ public:
 	 */
 	void CleanUp();
 
-	virtual ~IdentityManager();
+	virtual ~IdentityManager() = default;
 private:
 
 	bool GetCertificate(const string& fqdn, const string& provider);
@@ -203,7 +203,7 @@ private:
 
 	bool CheckUnitID();
 	bool OPLogin();
-	bool UploadDnsKey(string unitid, string token);
+	bool UploadDnsKey(const string& unitid, const string& token);
 
 	string unitid;
 	string hostname;
