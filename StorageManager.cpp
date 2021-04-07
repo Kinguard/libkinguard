@@ -88,11 +88,32 @@ bool StorageManager::mountDevice(const string &destination)
 			DiskHelper::Umount( source );
 		}
 
+	}
+	catch ( ErrnoException& err)
+	{
+		logg << Logger::Error << "Failed to make sure storage not mounted: " << err.what() << lend;
+		return false;
+	}
+
+
+	try
+	{
 		DiskHelper::Mount( source , destination );
 	}
 	catch( ErrnoException& err)
 	{
-		(void) err;
+		logg << Logger::Error << "Failed to mount storage device: " << err.what() << lend;
+
+		// Sometimes pclose failes waiting on process, in these cases operation is most likely
+		// successful and we should not error out.
+		if( errno == ECHILD )
+		{
+			if( DiskHelper::IsMounted( source ) != "" )
+			{
+				logg << Logger::Notice << "Storage is mounted, ignore previous error" << lend;
+				return true;
+			}
+		}
 		return false;
 	}
 
@@ -121,6 +142,22 @@ bool StorageManager::Initialize(const string& password)
 	if( ! this->initialized )
 	{
 		logg << Logger::Debug << "Device not initialized, starting initialization"<<lend;
+
+		logg << Logger::Debug << "Check if " << sysinfo.StorageDevicePath() <<  " is mounted"  << lend;
+
+		try
+		{
+			if( DiskHelper::IsMounted( sysinfo.StorageDevicePath() ) != "" )
+			{
+				logg << Logger::Notice << "Device" << sysinfo.StorageDevicePath() << " seems mounted, try umount" << lend;
+				DiskHelper::Umount( sysinfo.StorageDevicePath() );
+			}
+		}
+		catch (ErrnoException& err)
+		{
+			logg << Logger::Notice << "Failed to check device: " << err.what() << lend;
+		}
+
 		bool partition = true;
 		if( SysInfo::useLVM() )
 		{
@@ -261,10 +298,11 @@ bool StorageManager::DeviceExists()
 {
 	try
 	{
+		logg << Logger::Debug << "Resolving device: " << sysinfo.StorageDevice() <<lend;
+
 		string device = File::RealPath( sysinfo.StorageDevice() );
 
 		logg << Logger::Debug << "Checking device " << device << lend;
-
 
 		if( ! DiskHelper::DeviceExists( device ) )
 		{
@@ -278,7 +316,8 @@ bool StorageManager::DeviceExists()
 
 	}catch( std::exception& e)
 	{
-		logg << Logger::Notice << "Failed to check device: " << e.what() <<lend;
+		logg << Logger::Notice << "Failed to check device: " << sysinfo.StorageDevice()
+			 << "(" << e.what() <<")" <<lend;
 		return false;
 	}
 	return true;
