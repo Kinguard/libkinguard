@@ -1,3 +1,17 @@
+libkinguard (1.0.23) vili; urgency=medium
+
+  * Update to use http status codes from libutils
+  * Cleanups and modernizations
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 09 Apr 2021 11:46:30 +0200
+
+libkinguard (1.0.22) vili; urgency=medium
+
+  * Update storagemanager from OPI-Control to be able to remove
+    from there.
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 07 Apr 2021 14:36:23 +0200
+
 libkinguard (1.0.21) vili; urgency=medium
 
   * Update idmanager setfqdn to inform kernel on namechange
