@@ -4,6 +4,7 @@
 #include <libutils/Logger.h>
 #include <libutils/FileUtils.h>
 #include <libutils/Process.h>
+#include <libutils/HttpStatusCodes.h>
 
 #include <libopi/SysConfig.h>
 #include <libopi/AuthServer.h>
@@ -16,6 +17,7 @@
 #define SCFG	(OPI::SysConfig())
 
 using namespace Utils;
+using namespace Utils::HTTP;
 using namespace OPI;
 using namespace OPI::CryptoHelper;
 
@@ -155,8 +157,8 @@ bool BackupManager::RestoreBackup(const string &backup, const string &targetpath
 
 // Temp workaround to figure out if this is a local or remote backup
 // Todo: Refactor in libopi
-#define LOCALBACKUP	"/tmp/localbackup"
-#define REMOTEBACKUP "/tmp/remotebackup"
+constexpr const char* LOCALBACKUP	= "/tmp/localbackup";
+constexpr const char* REMOTEBACKUP	= "/tmp/remotebackup";
 
 	if( backup.substr(0,strlen(LOCALBACKUP) ) == LOCALBACKUP )
 	{
@@ -235,7 +237,7 @@ bool BackupManager::InProgress()
 {
 	ScopedLog l("BackupInProgress");
 	bool ret = false;
-#define LOCKFILE  "/var/run/lock/kgp-backup.lock"
+	constexpr const char* LOCKFILE  = "/var/run/lock/kgp-backup.lock";
 
 	if( ! File::FileExists(LOCKFILE) )
 	{
@@ -311,16 +313,16 @@ bool BackupManager::SetupRestoreEnv()
 	RSAWrapper ob;
 	ob.GenerateKeys();
 
-	File::Write(SCFG.GetKeyAsString("hostinfo","syspubkey"), ob.PubKeyAsPEM(), 0644);
-	File::Write(SCFG.GetKeyAsString("hostinfo","sysauthkey"), ob.PrivKeyAsPEM(), 0600);
+	File::Write(SCFG.GetKeyAsString("hostinfo","syspubkey"), ob.PubKeyAsPEM(), File::UserRW|File::GroupRead|File::OtherRead);
+	File::Write(SCFG.GetKeyAsString("hostinfo","sysauthkey"), ob.PrivKeyAsPEM(), File::UserRW);
 
 	AuthServer s(this->unitid);
 
 	string challenge;
-	int resultcode;
+	int resultcode = Status::Ok;
 	tie(resultcode,challenge) = s.GetChallenge();
 
-	if( resultcode != 200 )
+	if( resultcode != Status::Ok )
 	{
 		logg << Logger::Notice << "Failed to get challenge " << resultcode <<lend;
 		return false;
@@ -330,7 +332,7 @@ bool BackupManager::SetupRestoreEnv()
 	Json::Value ret;
 	tie(resultcode, ret) = s.SendSignedChallenge( signedchal );
 
-	if( resultcode != 403 )
+	if( resultcode != Status::Forbidden )
 	{
 		logg << Logger::Notice << "Failed to send challenge " << resultcode <<lend;
 		return false;
@@ -341,7 +343,7 @@ bool BackupManager::SetupRestoreEnv()
 
 	tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode( ob.PubKeyAsPEM() ) );
 
-	if( resultcode != 200 )
+	if( resultcode != Status::Ok )
 	{
 		logg << Logger::Notice << "Failed to send secret ("
 			 << resultcode
@@ -370,7 +372,7 @@ void BackupManager::WriteConfig()
 
 	if( ! File::DirExists( path ) )
 	{
-		File::MkPath( path ,0755);
+		File::MkPath( path ,File::UserRWX | File::GroupRX | File::OtherRX);
 	}
 
 	stringstream ss;
@@ -389,6 +391,6 @@ void BackupManager::WriteConfig()
 		<< "fs-passphrase: " << this->backuppassword <<endl;
 
 
-	File::Write(authfile, ss.str(), 0600 );
+	File::Write(authfile, ss.str(), File::UserRW );
 }
 } // Namespace KGP

@@ -54,7 +54,7 @@ public:
 							 const string& ip,
 							 const string& netmask,
 							 const string& gateway,
-							 const list<string> dns );
+							 const list<string>& dns );
 
 	/**
 	 * @brief DynamicConfiguration set dynamic configuration on interface

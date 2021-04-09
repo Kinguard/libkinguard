@@ -74,9 +74,9 @@ bool MailManager::SetHostname(const string &name, const string& domain)
 {
 	try
 	{
-		File::Write("/etc/mailname", name + "."+ domain, 0644);
+		File::Write("/etc/mailname", name + "."+ domain, File::UserRW | File::GroupRead | File::OtherRead);
 
-		bool res;
+		bool res = false;
 		stringstream cmd;
 		cmd << "/usr/sbin/postconf -e \"myhostname=" << name << "." << domain <<"\"";
 		tie(res, std::ignore) = Process::Exec(cmd.str() );
@@ -147,7 +147,7 @@ void MailManager::DeleteAddresses(const string &user)
 	{
 		list<tuple<string,string>> addrs = mc.GetAddresses(domain);
 
-		for( tuple<string,string> addr: addrs)
+		for( const tuple<string,string> &addr: addrs)
 		{
 			string localpart, auser;
 			tie(localpart, auser) = addr;
@@ -407,7 +407,7 @@ bool MailManager::Synchronize(bool force)
 
 	if( this->postfixupdated || force )
 	{
-		bool status;
+		bool status = false;
 		string aliases = sysconfig.GetKeyAsString("filesystem","storagemount") + "/" + sysconfig.GetKeyAsString("mail","vmailbox");
 		tie(status, std::ignore) = Utils::Process::Exec( "/usr/sbin/postmap " + aliases );
 		if( !status )
@@ -478,25 +478,25 @@ void MailManager::SetupEnvironment()
 	string aliases = sysconfig.GetKeyAsString("filesystem","storagemount") + sysconfig.GetKeyAsString("mail","vmailbox");
 	if( ! File::FileExists( aliases ) )
 	{
-		File::Write( aliases, "", 0600);
+		File::Write( aliases, "", File::UserRW);
 	}
 
 	string saslpwd = sysconfig.GetKeyAsString("filesystem","storagemount")  + sysconfig.GetKeyAsString("mail","saslpasswd");
 	if( ! File::FileExists( saslpwd ) )
 	{
-		File::Write( saslpwd, "", 0600);
+		File::Write( saslpwd, "", File::UserRW);
 	}
 
 	string domains = sysconfig.GetKeyAsString("filesystem","storagemount") + sysconfig.GetKeyAsString("mail","vdomains");
 	if( ! File::FileExists( domains ) )
 	{
-		File::Write( domains, "", 0600);
+		File::Write( domains, "", File::UserRW);
 	}
 
 	string localmail = sysconfig.GetKeyAsString("filesystem","storagemount") + sysconfig.GetKeyAsString("mail","localmail");
 	if( ! File::FileExists( localmail ) )
 	{
-		File::Write( localmail, "", 0600);
+		File::Write( localmail, "", File::UserRW);
 	}
 
 	if( chown( aliases.c_str(), User::UserToUID("postfix"), Group::GroupToGID("postfix") ) != 0)
@@ -519,7 +519,7 @@ void MailManager::SetupEnvironment()
 		logg << Logger::Error << "Failed to change owner on config directory"<<lend;
 	}
 
-	if( chmod( File::GetPath(domains).c_str(), 0700 ) != 0)
+	if( chmod( File::GetPath(domains).c_str(), File::UserRWX ) != 0)
 	{
 		logg << Logger::Error << "Failed to change mode on config directory"<<lend;
 	}

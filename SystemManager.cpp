@@ -10,10 +10,7 @@
 
 using namespace Utils;
 
-SystemManager::SystemManager()
-{
-
-}
+SystemManager::SystemManager() = default;
 
 SystemManager &SystemManager::Instance()
 {
@@ -32,7 +29,7 @@ tuple<bool, string> SystemManager::UpgradeAvailable()
 		return make_tuple(false,"");
 	}
 
-	bool retval;
+	bool retval = false;
 	string retoutput;
 	tie(retval, retoutput) = Process::Exec("/usr/share/opi-updates/kgp-checkupgrade");
 
@@ -107,7 +104,4 @@ void SystemManager::StartUpdate()
 	}
 }
 
-SystemManager::~SystemManager()
-{
-
-}
+SystemManager::~SystemManager() = default;

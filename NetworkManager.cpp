@@ -60,7 +60,7 @@ Json::Value NetworkManager::GetConfiguration(const string &interface)
 	return this->net->GetInterface(interface);
 }
 
-bool NetworkManager::StaticConfiguration(const string &interface, const string &ip, const string &netmask, const string &gateway, const list<string> dns)
+bool NetworkManager::StaticConfiguration(const string &interface, const string &ip, const string &netmask, const string &gateway, const list<string>& dns)
 {
 	this->net->SetStatic(interface,ip, netmask, gateway, dns);
 	this->net->WriteConfig();

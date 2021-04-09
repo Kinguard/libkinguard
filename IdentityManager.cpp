@@ -7,10 +7,10 @@
 #include <libutils/Logger.h>
 #include <libutils/String.h>
 #include <libutils/Process.h>
+#include <libutils/HttpStatusCodes.h>
 
 #include <libopi/HostsConfig.h>
 #include <libopi/AuthServer.h>
-#include <libopi/HttpStatusCodes.h>
 #include <libopi/DnsServer.h>
 #include <libopi/SysConfig.h>
 #include <libopi/Secop.h>
@@ -21,7 +21,7 @@
 
 using namespace Utils;
 using namespace OPI;
-using namespace OPI::HTTP;
+using namespace Utils::HTTP;
 
 #define SCFG	(OPI::SysConfig())
 
@@ -87,7 +87,7 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 		hosts.WriteBack();
 
 		// Update system hostname
-		File::Write("/etc/hostname", this->hostname, 0644);
+		File::Write("/etc/hostname", this->hostname, File::UserRW | File::GroupRead | File::OtherRead);
 
 	}
 	catch (std::runtime_error& err)
@@ -197,7 +197,7 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(const string &key, co
 		// create paths.
 		try
 		{
-			File::MkPath(CustomCertPath,0700);
+			File::MkPath(CustomCertPath, File::UserRWX);
 		}
 		catch (Utils::ErrnoException& err)
 		{
@@ -209,10 +209,10 @@ tuple<bool,string> IdentityManager::WriteCustomCertificate(const string &key, co
 
 	try {
 		// Write content to userCert files
-		File::Write(CustomCertFile,cert,0644);
+		File::Write(CustomCertFile,cert, File::UserRW | File::GroupRead | File::OtherRead);
 
 		if ( key != "" ) {
-			File::Write(CustomKeyFile,key,0644);
+			File::Write(CustomKeyFile,key,File::UserRW | File::GroupRead | File::OtherRead);
 		}
 		else
 		{
@@ -532,13 +532,13 @@ bool IdentityManager::RegisterKeys() {
 		string priv_path = File::GetPath( dnsauthkey );
 		if( ! File::DirExists( priv_path ) )
 		{
-			File::MkPath( priv_path, 0755);
+			File::MkPath( priv_path, File::UserRWX | File::GroupRX | File::OtherRX);
 		}
 
 		string pub_path = File::GetPath( dnspubkey );
 		if( ! File::DirExists( pub_path ) )
 		{
-			File::MkPath( pub_path, 0755);
+			File::MkPath( pub_path, File::UserRWX | File::GroupRX | File::OtherRX);
 		}
 
 		if( ! File::FileExists( dnsauthkey) || ! File::FileExists( dnspubkey ) )
@@ -549,11 +549,11 @@ bool IdentityManager::RegisterKeys() {
 
 			if ( File::FileExists(dnsauthkey)) {
 				string olddnsauthkey = File::GetContentAsString( dnsauthkey,true );
-				File::Write(dnsauthkey+".old",olddnsauthkey, 0600 );
+				File::Write(dnsauthkey+".old",olddnsauthkey, File::UserRW );
 			}
 			if ( File::FileExists(dnspubkey)) {
 				string olddnspubkey = File::GetContentAsString(dnspubkey,true );
-				File::Write(dnspubkey+".old",olddnspubkey, 0644 );
+				File::Write(dnspubkey+".old",olddnspubkey, File::UserRW | File::GroupRead | File::OtherRead );
 			}
 
 			// Make sure we have no keys before writing new ones
@@ -577,8 +577,8 @@ bool IdentityManager::RegisterKeys() {
 				logg << Logger::Debug << "Unable to delete: " << dnspubkey << " : " << err.what()<< lend;
 			}
 
-			File::Write(dnsauthkey, dns.PrivKeyAsPEM(), 0600 );
-			File::Write(dnspubkey, dns.PubKeyAsPEM(), 0644 );
+			File::Write(dnsauthkey, dns.PrivKeyAsPEM(), File::UserRW );
+			File::Write(dnspubkey, dns.PubKeyAsPEM(), File::UserRW | File::GroupRead | File::OtherRead );
 		}
 
 	}
@@ -776,7 +776,7 @@ bool IdentityManager::GetCertificate(const string &fqdn, const string &provider)
 	// Make sure we have no symlinked tempcert in place
 	unlink( syscert.c_str() );
 
-	File::Write( syscert, ret["cert"].asString(), 0644);
+	File::Write( syscert, ret["cert"].asString(), File::UserRW | File::GroupRead | File::OtherRead);
 
 	return true;
 }
@@ -806,9 +806,7 @@ bool SignerThread::Result()
 		return this->result;
 	}
 
-SignerThread::~SignerThread()
-{
-}
+SignerThread::~SignerThread() = default;
 
 bool IdentityManager::GetSignedCert(const string &fqdn)
 {

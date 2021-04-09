@@ -333,10 +333,7 @@ string StorageManager::Error()
 	return this->global_error;
 }
 
-StorageManager::~StorageManager()
-{
-
-}
+StorageManager::~StorageManager() = default;
 
 bool StorageManager::setupLUKS(const string &path, const string& password)
 {
