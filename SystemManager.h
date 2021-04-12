@@ -40,18 +40,27 @@ public:
 	 * description, text describing update
 	 *
 	 */
-	static tuple<bool,string> UpgradeAvailable(void);
+	tuple<bool,string> UpgradeAvailable(void);
+
+
+	/**
+	 * @brief IsConfigured, tries to determine if system has an
+	 *        active configuration. (Says nothing on storage etc)
+	 *
+	 * @return true if configured
+	 */
+	bool IsConfigured();
 
 	/**
 	 * @brief StartUpgrade, start a detached system upgrade
 	 *
 	 */
-	static void StartUpgrade(void);
+	void StartUpgrade(void);
 
 	/**
 	 * @brief StartUpdate, start a routine system update
 	 */
-	static void StartUpdate(void);
+	void StartUpdate(void);
 
 	virtual ~SystemManager();
 private:

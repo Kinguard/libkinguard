@@ -6,6 +6,8 @@
 #include <libutils/Process.h>
 #include <libutils/Logger.h>
 
+#include <libopi/SysConfig.h>
+
 #define SLOG	ScopedLog l(__func__)
 
 using namespace Utils;
@@ -62,6 +64,11 @@ tuple<bool, string> SystemManager::UpgradeAvailable()
 	return make_tuple(val["status"].asBool(),val["description"].asString());
 }
 
+bool SystemManager::IsConfigured()
+{
+	return OPI::SysConfig().HasKey("hostinfo","hostname");
+}
+
 void SystemManager::StartUpgrade()
 {
 	SLOG;
@@ -79,6 +86,7 @@ void SystemManager::StartUpgrade()
 	catch (ErrnoException& err)
 	{
 		logg << Logger::Notice << "Launch of upgrade script failed: " << err.what() << lend;
+		this->global_error = "Launch of upgrade script failed: "s + err.what();
 	}
 }
 
@@ -101,6 +109,7 @@ void SystemManager::StartUpdate()
 	catch (ErrnoException& err)
 	{
 		logg << Logger::Notice << "Failed to start update ("<< err.what()<<")" << lend;
+		this->global_error = "Failed to start update ("s + err.what();
 	}
 }
 

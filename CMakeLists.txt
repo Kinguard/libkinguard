@@ -52,7 +52,7 @@ set( src
 	UserManager.cpp
 	)
 
-add_definitions( -std=c++11 -Wall )
+add_definitions( -Wall )
 
 add_library( ${PROJECT_NAME}_static STATIC ${src} )
 add_library( ${PROJECT_NAME} SHARED ${src} )
