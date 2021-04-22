@@ -8,7 +8,7 @@ pkg_check_modules ( LIBUTILS REQUIRED libutils>=1.5.19 )
 
 set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
-set (VERSION_PATCH 23)
+set (VERSION_PATCH 25)
 set (VERSION "${VERSION_MAJOR}.${VERSION_MINOR}")
 set (VERSION_FULL "${VERSION}.${VERSION_PATCH}")
 set (APP_NAME "lib${PROJECT_NAME}")
@@ -35,6 +35,8 @@ set( headers
 	IdentityManager.h
 	MailManager.h
 	NetworkManager.h
+	StorageDevice.h
+	StorageConfig.h
 	StorageManager.h
 	SystemManager.h
 	UserManager.h
@@ -47,6 +49,8 @@ set( src
 	IdentityManager.cpp
 	MailManager.cpp
 	NetworkManager.cpp
+	StorageDevice.cpp
+	StorageConfig.cpp
 	StorageManager.cpp
 	SystemManager.cpp
 	UserManager.cpp
@@ -70,7 +74,7 @@ set_target_properties( ${PROJECT_NAME}_static PROPERTIES
 		OUTPUT_NAME ${PROJECT_NAME}
 	)
 
-#add_subdirectory( test )
+add_subdirectory( test )
 #enable_testing()
 #add_test( NAME TestLibKinguard COMMAND testapp )
 

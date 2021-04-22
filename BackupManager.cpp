@@ -189,14 +189,14 @@ constexpr const char* REMOTEBACKUP	= "/tmp/remotebackup";
 
 	if( !this->backuphelper->RestoreBackup( backup ) )
 	{
-		StorageManager::umountDevice();
+		StorageManager::Instance().umountDevice();
 		this->global_error = "Restore Backup - restore failed";
 		return false;
 	}
 
 	try
 	{
-		StorageManager::umountDevice();
+		StorageManager::Instance().umountDevice();
 	}
 	catch( ErrnoException& err)
 	{

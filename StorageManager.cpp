@@ -17,6 +17,7 @@ using namespace OPI;
 namespace KGP
 {
 
+
 StorageManager &StorageManager::Instance()
 {
 	static StorageManager mgr;
@@ -24,13 +25,10 @@ StorageManager &StorageManager::Instance()
 	return mgr;
 }
 
-StorageManager::StorageManager(): device_new(false), initialized(false)
+StorageManager::StorageManager():
+	device_new(false),
+	initialized(false)
 {
-	SysConfig cfg;
-
-	this->storagemount = cfg.GetKeyAsString("filesystem", "storagemount");
-	this->luksdevice = cfg.GetKeyAsString("filesystem", "luksdevice");
-	this->lvmdevice = cfg.GetKeyAsString("filesystem", "lvmdevice");
 }
 
 /**
@@ -73,10 +71,46 @@ bool StorageManager::checkDevice(const string& path)
 	return true;
 }
 
+bool StorageManager::partitionDisks(const list<string>& devs)
+{
+	try
+	{
+
+		for( const auto& pv : devs)
+		{
+			if( !DiskHelper::DeviceExists(pv) )
+			{
+				logg << Logger::Error << "Device doesn't exist: " << pv << lend;
+				return false;
+
+				DiskHelper::PartitionDevice(pv);
+			}
+		}
+
+	}
+	catch (std::runtime_error& err)
+	{
+		logg << Logger::Error << "Failed to partition disk: " << err.what() << lend;
+		return false;
+	}
+
+	// Check proper setup
+	for( const auto& pv : devs)
+	{
+		if( ! this->checkDevice( DiskHelper::PartitionName(pv) ) )
+		{
+			logg << Logger::Error << "Device partition missing!" << lend;
+			return false;
+		}
+	}
+
+	return true;
+}
+
 bool StorageManager::mountDevice(const string &destination)
 {
 	// Work out what to mount
-	string source = StorageManager::DevicePath();
+	string source = this->DevicePath();
 
 	logg << Logger::Debug << "Mount "<< source << " device at " << destination << lend;
 
@@ -94,7 +128,6 @@ bool StorageManager::mountDevice(const string &destination)
 		logg << Logger::Error << "Failed to make sure storage not mounted: " << err.what() << lend;
 		return false;
 	}
-
 
 	try
 	{
@@ -122,85 +155,79 @@ bool StorageManager::mountDevice(const string &destination)
 
 void StorageManager::umountDevice()
 {
-	DiskHelper::Umount( StorageManager::DevicePath() );
+	DiskHelper::Umount( this->DevicePath() );
 }
 
-/*
- * TODO: This has to be reworked. To complicated and hackish
- */
 bool StorageManager::Initialize(const string& password)
 {
-	logg << Logger::Debug << "Storagemanager initialize" << lend;
+	using namespace Storage;
 
-	if( ! this->checkDevice( sysinfo.StorageDevice() ) )
+	logg << Logger::Debug << "Storagemanager initialize storage" << lend;
+
+
+	if( this->storageConfig.UsePhysicalStorage(Physical::None) )
 	{
-		return false;
+		logg << Logger::Notice << "Device dont use separate physical backing store, skip storage initialization" << lend;
+		return true;
 	}
 
-	string curdevice = sysinfo.StorageDevicePath();
+	this->encryptionpassword = password;
 
-	if( ! this->initialized )
+	if ( ! this->initialized )
 	{
 		logg << Logger::Debug << "Device not initialized, starting initialization"<<lend;
 
-		logg << Logger::Debug << "Check if " << sysinfo.StorageDevicePath() <<  " is mounted"  << lend;
+		const map<StorageType, std::function<bool()>> smap =
+		{
+			{ {Physical::Partition,	Logical::None,	Encryption::None}, [this](){ return this->InitPNNHandler();} },
+			{ {Physical::Partition,	Logical::LVM,	Encryption::None}, [this](){ return this->InitPLNHandler();} },
+			{ {Physical::Partition,	Logical::None,	Encryption::LUKS}, [this](){ return this->InitPNLHandler();} },
+			{ {Physical::Partition,	Logical::LVM,	Encryption::LUKS}, [this](){ return this->InitPLLHandler();} },
+			{ {Physical::Block,		Logical::None,	Encryption::None}, [this](){ return this->InitBNNHandler();} },
+			{ {Physical::Block,		Logical::LVM,	Encryption::None}, [this](){ return this->InitBLNHandler();} },
+			{ {Physical::Block,		Logical::None,	Encryption::LUKS}, [this](){ return this->InitBNLHandler();} },
+			{ {Physical::Block,		Logical::LVM,	Encryption::LUKS}, [this](){ return this->InitBLLHandler();} },
+		};
 
-		try
+		// Workout setup scenario
+		Storage::StorageType stype = make_tuple(
+					this->storageConfig.PhysicalStorage(),
+					this->storageConfig.LogicalStorage(),
+					this->storageConfig.EncryptionStorage());
+
+		const auto& setupselection = smap.find(stype);
+
+		if( setupselection == smap.end() )
 		{
-			if( DiskHelper::IsMounted( sysinfo.StorageDevicePath() ) != "" )
-			{
-				logg << Logger::Notice << "Device" << sysinfo.StorageDevicePath() << " seems mounted, try umount" << lend;
-				DiskHelper::Umount( sysinfo.StorageDevicePath() );
-			}
-		}
-		catch (ErrnoException& err)
-		{
-			logg << Logger::Notice << "Failed to check device: " << err.what() << lend;
+			logg << Logger::Emerg << "Undefined setup configurartion" << lend;
+			return false;
 		}
 
-		bool partition = true;
-		if( SysInfo::useLVM() )
-		{
-			if( ! this->InitializeLVM( partition ) )
+		try {
+			if( ! setupselection->second() )
 			{
+				logg << Logger::Error << "Failed to setup storage" << lend;
 				return false;
 			}
-			curdevice = this->lvmdevice;
-			partition = false;
+		}
+		catch ( std::runtime_error& err)
+		{
+			logg << Logger::Error << "Storage setup failed with exception: " << err.what() << lend;
+			return false;
 		}
 
-		if( SysInfo::useLUKS() )
-		{
-			if( ! this->InitializeLUKS( curdevice, password, partition ) )
-			{
-				return false;
-			}
-			curdevice = this->luksdevice;
-		}
 		this->initialized = true;
 	}
-	else
-	{
-		logg << Logger::Debug << "Device initialized, skip to setup"<<lend;
-		if( SysInfo::useLVM() )
-		{
-			curdevice = this->lvmdevice;
-		}
 
-		if( SysInfo::useLUKS() )
-		{
-			curdevice = this->luksdevice;
-		}
-	}
-	return this->setupStorageArea( curdevice );
+	return this->setupStorageArea();
 }
 
 bool StorageManager::Open(const string& password)
 {
-	if( SysInfo::useLUKS() )
+	if( this->UseLocking() )
 	{
 		// Use lvm or raw blockdevice?
-		string ld = SysInfo::useLVM() ? this->lvmdevice : sysinfo.StorageDevicePath();
+		string ld = this->UseLogicalStorage() ? this->getLogicalDevice() : this->getPysicalDevice();
 
 		Luks l( ld );
 
@@ -216,36 +243,37 @@ bool StorageManager::Open(const string& password)
 		}
 
 	}
-
 	return true;
 }
 
 bool StorageManager::UseLocking()
 {
-	return SysInfo::useLUKS();
+	return this->storageConfig.UseEncryption(Storage::Encryption::LUKS);
+}
+
+bool StorageManager::UseLogicalStorage()
+{
+	// Currently only use LVM
+	return this->storageConfig.UseLogicalStorage(Storage::Logical::LVM);
 }
 
 bool StorageManager::IsLocked()
 {
-	Luks l( StorageManager::DevicePath() );
 
-	return ! l.Active( StorageManager::DevicePath() );
+	if( ! this->UseLocking() )
+	{
+		return false;
+	}
+
+	;
+	Luks l( this->DevicePath() );
+
+	return ! l.Active( this->DevicePath() );
 }
 
 string StorageManager::DevicePath()
 {
-	string source = sysinfo.StorageDevicePath();
-
-	if( SysInfo::useLUKS() )
-	{
-		source = SysConfig().GetKeyAsString("filesystem", "luksdevice");
-	}
-	else if( SysInfo::useLVM() )
-	{
-		source = SysConfig().GetKeyAsString("filesystem", "lvmdevice");
-	}
-
-	return source;
+	return this->storageConfig.StorageDevice();
 }
 
 bool StorageManager::StorageAreaExists()
@@ -253,37 +281,75 @@ bool StorageManager::StorageAreaExists()
 	logg << Logger::Debug << "Check if storage area exists"<<lend;
 	try
 	{
-		// With no underlaying device there can't be any upper layer either
-		if( ! DiskHelper::DeviceExists( sysinfo.StorageDevice() ) )
+
+		list<string> pdevs = this->storageConfig.PhysicalDevices();
+
+		if( pdevs.size() == 0 )
 		{
+			logg << Logger::Error << "Missing physical devices in config" << lend;
 			return false;
 		}
 
-		// We need storage space on underlaying device. I.e. an sd-card is available in slot
-		if( DiskHelper::DeviceSize( sysinfo.StorageDevice() ) == 0 )
+		// Need physical storage
+		for( const auto& pdev: pdevs )
 		{
-			return false;
-		}
-
-		if( SysInfo::useLVM() && ! DiskHelper::DeviceExists( SysConfig().GetKeyAsString("filesystem", "lvmdevice") ) )
-		{
-			return false;
-		}
-
-		// If we have a luks-volume on underlaying storage we assume we have a correct setup
-		if( SysInfo::useLUKS() )
-		{
-			if( SysInfo::useLVM() && ! Luks::isLuks( SysConfig().GetKeyAsString("filesystem", "lvmdevice") ) )
+			if( ! DiskHelper::DeviceExists( pdev ) )
 			{
+				logg << Logger::Notice << "Device " << pdev << " doesnt exist" << lend;
 				return false;
 			}
 
-			if( ! SysInfo::useLVM() && ! Luks::isLuks( sysinfo.StorageDevicePath() ) )
+			// We need storage space on underlaying device. I.e. an sd-card is available in slot
+			if( DiskHelper::DeviceSize( pdev ) == 0 )
 			{
+				logg << Logger::Notice << "Device " << pdev << " has no space" << lend;
 				return false;
 			}
 		}
 
+		if( this->storageConfig.UseLogicalStorage( Storage::Logical::LVM) )
+		{
+			list<string> ldevs = this->storageConfig.LogicalDevices();
+
+			if( ldevs.size() == 0 )
+			{
+				logg << Logger::Error << "Logical storage selected but no device specified" << lend;
+				return false;
+			}
+
+			for(const auto& ldev: ldevs)
+			{
+				if( !DiskHelper::DeviceExists( ldev ) )
+				{
+					logg << Logger::Debug << "Logical device " << ldev <<" not created" << lend;
+					return false;
+				}
+			}
+
+		}
+
+		if( this->storageConfig.UseEncryption(Storage::Encryption::LUKS) )
+		{
+			list<string> devs;
+			if( this->storageConfig.UseLogicalStorage( Storage::Logical::LVM) )
+			{
+				devs = this->storageConfig.LogicalDevices();
+			}
+			else
+			{
+				devs = this->storageConfig.PhysicalDevices();
+			}
+
+			for(const auto& dev: devs)
+			{
+				if( ! Luks::isLuks( dev ) )
+				{
+					logg << Logger::Debug << "No LUKS on device " << dev << lend;
+					return false;
+				}
+			}
+
+		}
 	}
 	catch( std::exception& e)
 	{
@@ -296,11 +362,12 @@ bool StorageManager::StorageAreaExists()
 
 bool StorageManager::DeviceExists()
 {
+	string rawdevice = this->DevicePath();
 	try
 	{
-		logg << Logger::Debug << "Resolving device: " << sysinfo.StorageDevice() <<lend;
+		logg << Logger::Debug << "Resolving device: " << rawdevice <<lend;
 
-		string device = File::RealPath( sysinfo.StorageDevice() );
+		string device = File::RealPath( rawdevice );
 
 		logg << Logger::Debug << "Checking device " << device << lend;
 
@@ -316,7 +383,7 @@ bool StorageManager::DeviceExists()
 
 	}catch( std::exception& e)
 	{
-		logg << Logger::Notice << "Failed to check device: " << sysinfo.StorageDevice()
+		logg << Logger::Notice << "Failed to check device: " << rawdevice
 			 << "(" << e.what() <<")" <<lend;
 		return false;
 	}
@@ -347,8 +414,6 @@ bool StorageManager::setupLUKS(const string &path, const string& password)
 			this->global_error = "Wrong password";
 			return false;
 		}
-
-		DiskHelper::FormatPartition( this->luksdevice, "OPI");
 	}
 	catch( std::runtime_error& err)
 	{
@@ -376,20 +441,16 @@ bool StorageManager::unlockLUKS(const string &path, const string& password)
 	return true;
 }
 
-bool StorageManager::InitializeLUKS(const string &device, const string& password, bool partition )
+/*
+ * Initialize Luks on lower level block device i.e. lvm or physical device
+ */
+bool StorageManager::InitializeLUKS(const string& device )
 {
+
 	logg << Logger::Debug << "Initialize LUKS on device " << device <<lend;
 	if( ! Luks::isLuks( device ) )
 	{
-		logg << Logger::Notice << "No luks volume on device " << device << " creating" << lend;
-
-		if( partition )
-		{
-			logg << Logger::Debug << "Partitioning " << sysinfo.StorageDevice() << lend;
-			DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
-		}
-
-		if( ! this->setupLUKS( device, password ) )
+		if( ! this->setupLUKS( device, this->encryptionpassword ) )
 		{
 			return false;
 		}
@@ -397,7 +458,7 @@ bool StorageManager::InitializeLUKS(const string &device, const string& password
 		this->device_new = true;
 	}
 
-	if( ! this->unlockLUKS( device, password ) )
+	if( ! this->unlockLUKS( device, this->encryptionpassword ) )
 	{
 		logg << Logger::Notice << "Unable to unlock device" << lend;
 		return false;
@@ -406,8 +467,9 @@ bool StorageManager::InitializeLUKS(const string &device, const string& password
 	return true;
 }
 
-bool StorageManager::setupStorageArea(const string &device)
+bool StorageManager::setupStorageArea()
 {
+	string device = this->DevicePath();
 	try
 	{
 		const string mountpoint = SysConfig().GetKeyAsString("filesystem", "storagemount");
@@ -443,75 +505,20 @@ bool StorageManager::setupStorageArea(const string &device)
 	return true;
 }
 
-void StorageManager::RemoveLUKS()
-{
-	logg << Logger::Debug << "Remove any active LUKS volumes on storage area" << lend;
-	try
-	{
-		if( SysInfo::useLVM() && Luks::isLuks( this->lvmdevice ) )
-		{
-			logg << Logger::Debug << "Try closing device" << lend;
-			Luks l( this->lvmdevice );
-
-			l.Close("opi" );
-		}
-	}
-	catch( std::exception& e)
-	{
-		logg << Logger::Notice << "Failed to close LUKS" << e.what() << lend;
-	}
-	logg << Logger::Debug << "Remove LUKS done"<< lend;
-}
-
-void StorageManager::RemoveLVM()
-{
-	logg << Logger::Debug << "Remove any present LVM volumes"<<lend;
-	try
-	{
-		LVM l;
-
-		list<VolumeGroupPtr> vgs = l.ListVolumeGroups();
-		for( auto& vg: vgs)
-		{
-			if( vg == nullptr )
-			{
-				logg << Logger::Error << "Got nullptr vg from listvgs"<< lend;
-				continue;
-			}
-			list<LogicalVolumePtr> lvs = vg->GetLogicalVolumes();
-			for( auto& lv: lvs)
-			{
-				if( lv == nullptr )
-				{
-					logg << Logger::Error << "Got nullptr lv from listlvs"<< lend;
-					continue;
-				}
-				vg->RemoveLogicalVolume(lv);
-			}
-
-			l.RemoveVolumeGroup(vg);
-		}
-
-		//TODO: remove all PVs
-	}
-	catch( std::exception& e)
-	{
-		logg << Logger::Error << "Failed to remove lvms: " << e.what()<<lend;
-	}
-	logg << Logger::Debug << "Remove done"<<lend;
-}
-
-bool StorageManager::CreateLVM()
+bool StorageManager::CreateLVM(const list<string>& physdevs)
 {
 	LVM lvm;
-	PhysicalVolumePtr pv;
+	list<PhysicalVolumePtr> pvs;
 	try
 	{
-		pv = lvm.CreatePhysicalVolume( File::RealPath( sysinfo.StorageDevicePath() ) );
+		for(const auto& pdev : physdevs)
+		{
+			pvs.emplace_back(lvm.CreatePhysicalVolume( File::RealPath( pdev  ) ) );
+		}
 
-		VolumeGroupPtr vg = lvm.CreateVolumeGroup( SysConfig().GetKeyAsString("filesystem", "lvmvg"), {pv} );
+		VolumeGroupPtr vg = lvm.CreateVolumeGroup( SysConfig().GetKeyAsString("storage", "lvm_vg"), pvs );
 
-		LogicalVolumePtr lv = vg->CreateLogicalVolume( SysConfig().GetKeyAsString("filesystem", "lvmlv") );
+		LogicalVolumePtr lv = vg->CreateLogicalVolume( SysConfig().GetKeyAsString("storage", "lvm_lv") );
 	}
 	catch( ErrnoException& err )
 	{
@@ -519,88 +526,184 @@ bool StorageManager::CreateLVM()
 		return false;
 	}
 
+	return true;
+}
+
+bool StorageManager::InitPNNHandler()
+{
+	ScopedLog log("Init Partition|None|None");
+
+	DiskHelper::FormatPartition(this->getPysicalDevice(), Storage::PartitionName );
 
 	return true;
 }
 
-
-
-bool StorageManager::InitializeLVM(bool partition)
+bool StorageManager::InitPLNHandler()
 {
-	logg << Logger::Debug << "Initialize LVM on " << this->lvmdevice << lend;
-	try
+	ScopedLog log("Init Partition|LVM|None");
+
+	if( !this->CreateLVM({ this->getPysicalDevice() }) )
 	{
-		if( ! StorageManager::StorageAreaExists() )
-		{
-			logg << Logger::Notice << "No LVM on device "<< sysinfo.StorageDevicePath()<<", creating"<<lend;
-
-			// Unfortunately we cant assume a clean slate, there could be a partial/full lvm here
-			// try to remove
-			if( SysInfo::useLUKS() )
-			{
-				this->RemoveLUKS();
-			}
-			this->RemoveLVM();
-
-			if ( partition )
-			{
-				logg << Logger::Debug << "Partitioning " << sysinfo.StorageDevice() << lend;
-				DiskHelper::PartitionDevice( sysinfo.StorageDevice() );
-			}
-
-			// We have a synchronization problem trying to figure out when partition is finalized
-			// and u-dev have created /dev entries. Thus we back of twice to hopefully let udev
-			// do its thing.
-			logg << Logger::Debug << "Sleep and wait for udev"<< lend;
-			sleep(3);
-
-			int retries = 100;
-			while( retries > 0 )
-			{
-				if( this->checkDevice( sysinfo.StorageDevicePath() ) )
-				{
-						break;
-				}
-				retries--;
-			}
-
-			if( retries == 0 )
-			{
-				logg << Logger::Error << "No such device avaliable (" << sysinfo.StorageDevicePath() << lend;
-				return false;
-			}
-
-			sleep(3);
-
-			// Setup device
-			retries = 100;
-			while( retries > 0)
-			{
-				if( this->CreateLVM() )
-				{
-					break;
-				}
-				retries--;
-			}
-			if( retries == 0 )
-			{
-				logg << Logger::Error << "Failed to create lvm"<<lend;
-				return false;
-			}
-			this->device_new = true;
-		}
-		else
-		{
-			logg << Logger::Debug << "Storage area exists, not creating lvm"<<lend;
-		}
-
-	}catch( std::exception& e)
-	{
-		logg << Logger::Error << "Unable to setup lvm: " << e.what() << lend;
 		return false;
 	}
 
-	// We should now have a valid LVM device to work with
+	DiskHelper::FormatPartition(this->getLogicalDevice(), Storage::PartitionName );
+
 	return true;
 }
+
+bool StorageManager::InitPNLHandler()
+{
+	ScopedLog log("Init Partition|None|LUKS");
+
+	if( ! this->InitializeLUKS( this->getPysicalDevice() ) )
+	{
+		return false;
+	}
+
+	DiskHelper::FormatPartition( this->getEncryptionDevice(), Storage::PartitionName );
+
+	return true;
+}
+
+bool StorageManager::InitPLLHandler()
+{
+	ScopedLog log("Init Partition|LVM|LUKS");
+
+	if( !this->CreateLVM({ this->getPysicalDevice() }) )
+	{
+		return false;
+	}
+
+	if( ! this->InitializeLUKS( this->getLogicalDevice() ) )
+	{
+		return false;
+	}
+
+	DiskHelper::FormatPartition( this->getEncryptionDevice(), Storage::PartitionName );
+
+	return true;
+}
+
+bool StorageManager::InitBNNHandler()
+{
+	ScopedLog log("Init Block|None|None");
+
+	if( !this->partitionDisks({ this->getPysicalDevice() } ) )
+	{
+		return false;
+	}
+
+	DiskHelper::FormatPartition( DiskHelper::PartitionName( this->getPysicalDevice() ), Storage::PartitionName);
+
+	return true;
+}
+
+bool StorageManager::InitBLNHandler()
+{
+	ScopedLog log("Init Block|LVM|None");
+
+	if( ! this->partitionDisks( this->storageConfig.LogicalDevices() ) )
+	{
+		return false;
+	}
+
+	list<string> parts;
+	for(const auto& dev: this->storageConfig.LogicalDevices() )
+	{
+		parts.emplace_back(DiskHelper::PartitionName(dev));
+	}
+
+	if( ! this->CreateLVM( parts ) )
+	{
+		return false;
+	}
+
+	DiskHelper::FormatPartition( this->getLogicalDevice(), Storage::PartitionName );
+
+	return true;
+}
+
+bool StorageManager::InitBNLHandler()
+{
+	ScopedLog log("Init Block|None|LUKS");
+
+	if( !this->partitionDisks({ this->getPysicalDevice() } ) )
+	{
+		return false;
+	}
+
+	if( this->InitializeLUKS( DiskHelper::PartitionName( this->getPysicalDevice())) )
+	{
+		return false;
+	}
+
+	DiskHelper::FormatPartition( this->getEncryptionDevice(), Storage::PartitionName );
+
+	return true;
+}
+
+bool StorageManager::InitBLLHandler()
+{
+	ScopedLog log("Init Block|LVM|LUKS");
+
+	if( ! this->partitionDisks( this->storageConfig.LogicalDevices() ) )
+	{
+		return false;
+	}
+
+	list<string> parts;
+	for(const auto& dev: this->storageConfig.LogicalDevices() )
+	{
+		parts.emplace_back(DiskHelper::PartitionName(dev));
+	}
+
+	if( ! this->CreateLVM( parts ) )
+	{
+		return false;
+	}
+
+	if( this->InitializeLUKS( this->getLogicalDevice() ) )
+	{
+		return false;
+	}
+
+	DiskHelper::FormatPartition( this->getEncryptionDevice(), Storage::PartitionName );
+
+	return true;
+}
+
+string StorageManager::getLogicalDevice()
+{
+	list<string> ldevs = this->storageConfig.LogicalDevices();
+	if( ldevs.size() != 1 )
+	{
+		logg << Logger::Notice << "Wrong amount of logical devices got:" << ldevs.size() << " assumed 1" << lend;
+		return "";
+	}
+	return ldevs.front();
+}
+
+string StorageManager::getPysicalDevice()
+{
+	list<string> pdevs = this->storageConfig.PhysicalDevices();
+	if( pdevs.size() != 1 )
+	{
+		logg << Logger::Notice << "Wrong amount of physical devices got:" << pdevs.size() << " assumed 1" << lend;
+		return "";
+	}
+	return pdevs.front();
+}
+
+string StorageManager::getEncryptionDevice()
+{
+	list<string> edevs = this->storageConfig.EncryptionDevices();
+	if( edevs.size() != 1 )
+	{
+		logg << Logger::Notice << "Wrong amount of encryption devices got:" << edevs.size() << " assumed 1" << lend;
+		return "";
+	}
+	return edevs.front();
+}
+
 } // Namespace KGP
