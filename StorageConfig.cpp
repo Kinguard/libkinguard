@@ -8,22 +8,25 @@
 using namespace Utils;
 using namespace OPI;
 
+#include <iostream>
+using namespace std;
+
 namespace KGP
 {
 namespace Storage
 {
 namespace Model
 {
-
 	Type asType(const char* name)
 	{
-		static const map<const char*, Type> t =
+		static const map<const string, Type> t =
 		{
-			{ "undefined", Undefined },
-			{ "static", Static },
-			{ "dynamic", Dynamic },
-			{ "unknown", Unknown },
+			{ "undefined",	Undefined },
+			{ "static",		Static },
+			{ "dynamic",	Dynamic },
+			{ "unknown",	Unknown },
 		};
+
 		return t.at(name);
 	}
 
@@ -35,7 +38,7 @@ namespace Model
 		"unknown",
 	};
 
-	constexpr const char *asString(Storage::Model::Type type)
+	const char *asString(Storage::Model::Type type)
 	{
 		return typenames.at(type);
 	}
@@ -45,7 +48,7 @@ namespace Physical
 {
 	Type asType(const char* name)
 	{
-		static const map<const char*, Type> t =
+		static const map<const string, Type> t =
 		{
 			{ "undefined", Undefined },
 			{ "none", None },
@@ -77,7 +80,7 @@ namespace Logical
 
 	Type asType(const char* name)
 	{
-		static const map<const char*, Type> t =
+		static const map<const string, Type> t =
 		{
 			{ "undefined", Undefined },
 			{ "none", None },
@@ -105,7 +108,7 @@ namespace Encryption
 {
 	Type asType(const char* name)
 	{
-		static const map<const char*, Type> t =
+		static const map<const string, Type> t =
 		{
 			{ "undefined", Undefined },
 			{ "none", None },
@@ -146,7 +149,7 @@ static void initStorageConfig()
 		cfg.PutKey("storage", "model", "static" );
 		cfg.PutKey("storage", "physical", "block" );
 
-		cfg.PutKey("storage", "block_devices", { sysinfo.StorageDevice() } );
+		cfg.PutKey("storage", "block_devices", list<string>{ sysinfo.StorageDevice() } );
 
 		if( SysInfo::isOpi() )
 		{

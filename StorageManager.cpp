@@ -75,16 +75,16 @@ bool StorageManager::partitionDisks(const list<string>& devs)
 {
 	try
 	{
-
 		for( const auto& pv : devs)
 		{
 			if( !DiskHelper::DeviceExists(pv) )
 			{
 				logg << Logger::Error << "Device doesn't exist: " << pv << lend;
 				return false;
-
-				DiskHelper::PartitionDevice(pv);
 			}
+
+			logg << Logger::Debug << "Partition: " << pv << lend;
+			DiskHelper::PartitionDevice(File::RealPath(pv));
 		}
 
 	}
@@ -362,29 +362,35 @@ bool StorageManager::StorageAreaExists()
 
 bool StorageManager::DeviceExists()
 {
-	string rawdevice = this->DevicePath();
+
+	list<string> devs = this->storageConfig.PhysicalDevices();
+
 	try
 	{
-		logg << Logger::Debug << "Resolving device: " << rawdevice <<lend;
 
-		string device = File::RealPath( rawdevice );
-
-		logg << Logger::Debug << "Checking device " << device << lend;
-
-		if( ! DiskHelper::DeviceExists( device ) )
+		for( const auto& dev: devs)
 		{
-			return false;
-		}
+			logg << Logger::Debug << "Resolving device: " << dev <<lend;
 
-		if( DiskHelper::DeviceSize( device ) == 0 )
-		{
-			return false;
+			string device = File::RealPath( dev );
+
+			logg << Logger::Debug << "Checking device " << device << lend;
+
+			if( ! DiskHelper::DeviceExists( device ) )
+			{
+				return false;
+			}
+
+			if( DiskHelper::DeviceSize( device ) == 0 )
+			{
+				return false;
+			}
+
 		}
 
 	}catch( std::exception& e)
 	{
-		logg << Logger::Notice << "Failed to check device: " << rawdevice
-			 << "(" << e.what() <<")" <<lend;
+		logg << Logger::Notice << "Failed to check device. (" << e.what() <<")" <<lend;
 		return false;
 	}
 	return true;
@@ -513,6 +519,7 @@ bool StorageManager::CreateLVM(const list<string>& physdevs)
 	{
 		for(const auto& pdev : physdevs)
 		{
+			logg << Logger::Debug << "Adding " << pdev << " to volumegroup" << lend;
 			pvs.emplace_back(lvm.CreatePhysicalVolume( File::RealPath( pdev  ) ) );
 		}
 
@@ -603,13 +610,13 @@ bool StorageManager::InitBLNHandler()
 {
 	ScopedLog log("Init Block|LVM|None");
 
-	if( ! this->partitionDisks( this->storageConfig.LogicalDevices() ) )
+	if( ! this->partitionDisks( this->storageConfig.PhysicalDevices() ) )
 	{
 		return false;
 	}
 
 	list<string> parts;
-	for(const auto& dev: this->storageConfig.LogicalDevices() )
+	for(const auto& dev: this->storageConfig.PhysicalDevices() )
 	{
 		parts.emplace_back(DiskHelper::PartitionName(dev));
 	}
@@ -647,13 +654,13 @@ bool StorageManager::InitBLLHandler()
 {
 	ScopedLog log("Init Block|LVM|LUKS");
 
-	if( ! this->partitionDisks( this->storageConfig.LogicalDevices() ) )
+	if( ! this->partitionDisks( this->storageConfig.PhysicalDevices() ) )
 	{
 		return false;
 	}
 
 	list<string> parts;
-	for(const auto& dev: this->storageConfig.LogicalDevices() )
+	for(const auto& dev: this->storageConfig.PhysicalDevices() )
 	{
 		parts.emplace_back(DiskHelper::PartitionName(dev));
 	}

@@ -25,7 +25,7 @@ namespace Storage
 		};
 
 		Type asType(const char* name);
-		constexpr const char* asString(enum Type type);
+		const char* asString(enum Type type);
 	}
 
 	namespace Physical
