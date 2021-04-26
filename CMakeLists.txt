@@ -5,6 +5,7 @@ cmake_minimum_required(VERSION 2.6)
 include( FindPkgConfig )
 pkg_check_modules ( LIBOPI REQUIRED libopi>=1.6.60 )
 pkg_check_modules ( LIBUTILS REQUIRED libutils>=1.5.19 )
+pkg_check_modules ( CPPUNIT REQUIRED cppunit>=1.12.1)
 
 set (VERSION_MAJOR 1)
 set (VERSION_MINOR 0)
