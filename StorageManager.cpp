@@ -31,22 +31,18 @@ StorageManager::StorageManager():
 {
 }
 
-/**
- * @brief checkDevice check if device is available, wait a while and retry if
- *        currently not available.
- * @param path Path to device to check
- * @return
- */
-bool StorageManager::checkDevice(const string& path)
+
+static bool checkOnce(const string& path)
 {
-	logg << Logger::Debug << "Check device " << path << lend;
-	int retries = 50;
+	constexpr int maxretries = 50;
+	constexpr uint32_t delay = 5000; // uS
+	int retries = maxretries;
 	bool done=false;
+	logg << Logger::Debug << "Test once if " << path << " present" << lend;
 	do
 	{
 		try
 		{
-			logg << Logger::Debug << "Checking device"<<lend;
 			done = DiskHelper::DeviceExists( Utils::File::RealPath( path ) );
 		}
 		catch(std::runtime_error& err)
@@ -56,19 +52,68 @@ bool StorageManager::checkDevice(const string& path)
 		if( !done && retries > 0 )
 		{
 			logg << Logger::Debug << "Device not yet available, waiting" << lend;
-			usleep(5000);
+			usleep(delay);
 		}
 	}while( !done && retries-- > 0);
 
 	if ( ! done )
 	{
 		logg << Logger::Notice << "Unable to locate device, aborting" << lend;
-		this->global_error = "Unable to locate storage device";
 		return false;
 	}
 
-	logg << Logger::Debug << "Device " << path << " avaliable" << lend;
 	return true;
+}
+
+
+
+/**
+ * @brief checkDevice check if device is available, wait a while and retry if
+ *        currently not available.
+ * @param path Path to device to check
+ * @return
+ */
+bool StorageManager::checkDevice(const string& path)
+{
+	logg << Logger::Debug << "Check device " << path << lend;
+	constexpr uint32_t usecinmilli = 1000;
+	constexpr uint32_t mdelay = 333;
+
+	// Unfortunately we can't trust a one-time check. When a new partition
+	// is created. Udev will trigger a couple of times adding and removing
+	// the device link/node.
+	//
+	// Thus we have to expect this and wait for device to "settle".
+	// i.e. be present for a "specific" time otherwise it is not uncommon
+	// for the device to be not present on further operations
+	//
+	// We try todo this by checking 3 times over a second and if
+	// Device present all 3 times it is said to be present
+	// Device never present during 3 times it is said to be not present
+	// Otherwise it is inconclusive and we try again
+
+	bool done = false;
+	bool present = false;
+	uint8_t retrycount = 2;
+	uint8_t checkcount = 0;
+	while( ! done )
+	{
+		checkcount = 0;
+		for(int i = 0; i < 3; i++)
+		{
+			if( checkOnce(path) )
+			{
+				checkcount++;
+			}
+			usleep( mdelay * usecinmilli );
+		}
+		present = checkcount == 3;
+		done = (checkcount == 0 || present ) || retrycount == 0;
+		retrycount--;
+	}
+
+	logg << Logger::Debug << "Device " << path << (present ? " avaliable" : " not available") << lend;
+	return present;
 }
 
 bool StorageManager::partitionDisks(const list<string>& devs)
@@ -640,7 +685,7 @@ bool StorageManager::InitBNLHandler()
 		return false;
 	}
 
-	if( this->InitializeLUKS( DiskHelper::PartitionName( this->getPysicalDevice())) )
+	if( ! this->InitializeLUKS( DiskHelper::PartitionName( this->getPysicalDevice())) )
 	{
 		return false;
 	}
@@ -670,7 +715,7 @@ bool StorageManager::InitBLLHandler()
 		return false;
 	}
 
-	if( this->InitializeLUKS( this->getLogicalDevice() ) )
+	if( ! this->InitializeLUKS( this->getLogicalDevice() ) )
 	{
 		return false;
 	}
