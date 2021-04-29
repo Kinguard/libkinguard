@@ -70,9 +70,15 @@ string StorageDevice::Model() const
 	return this->device["model"].asString();
 }
 
-string StorageDevice::MountPoint() const
+list<string> StorageDevice::MountPoint() const
 {
-	return this->device["mountpoint"].asString();
+	list<string> mps;
+
+	for( const auto& mp : this->device["mountpoint"])
+	{
+		mps.emplace_back(mp.asString());
+	}
+	return mps;
 }
 
 uint64_t StorageDevice::Blocks() const
@@ -119,8 +125,36 @@ bool StorageDevice::Is(StorageDevice::Characteristic c) const
 		return this->device["removable"].asBool();
 		break;
 	case RootDevice:
-		return this->device["mounted"].asBool() && this->device["mountpoint"].asString() == "/";
+	{
+		if( ! this->device["mounted"].asBool() )
+		{
+			return false;
+		}
+		for( const auto& mp : this->device["mountpoint"] )
+		{
+			if( mp.asString() == "/")
+			{
+				return true;
+			}
+		}
+		return false;
 		break;
+	}
+	case BootDevice:
+	{
+		for(const auto& part: this->device["partitions"])
+		{
+			for(const auto& mp : part["mountpoint"])
+			{
+				if( mp.asString() == "/")
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+		break;
+	}
 	case DeviceMapper:
 		return this->device["dm"].asBool();
 		break;

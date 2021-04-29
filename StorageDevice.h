@@ -28,6 +28,7 @@ public:
 		DeviceMapper,
 		LVMDevice,
 		LUKSDevice,
+		BootDevice,
 	};
 
 	/**
@@ -81,10 +82,10 @@ public:
 	string Model() const;
 
 	/**
-	 * @brief MountPoint mount point of mounted device
-	 * @return path to mount
+	 * @brief MountPoints mount point of mounted device
+	 * @return list of mount paths
 	 */
-	string MountPoint() const;
+	list<string> MountPoint() const;
 
 	/**
 	 * @brief Blocks amount of 512B blocks

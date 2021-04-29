@@ -17,16 +17,21 @@ void TestStorageDevice::tearDown()
 static void dump(const StorageDevice& dev)
 {
 	cout << "Dev: "	<< dev.Model()
-		 << " "		<< dev.DeviceName()
-		 << " "		<< dev.DevicePath()
-		 << " "		<< dev.SysPath();
+		 << " name "		<< dev.DeviceName()
+		 << " path "		<< dev.DevicePath()
+		 << " sysp "		<< dev.SysPath()
+		 << " is boot "		<< dev.Is(StorageDevice::BootDevice);
 
 	if( dev.Is(StorageDevice::Mounted) )
 	{
-		cout << " mounted at " << dev.MountPoint();
-		if( dev.Is(StorageDevice::RootDevice) )
+		list<string> mps = dev.MountPoint();
+		for( const auto& mp : mps)
 		{
-			cout << " and this is the root device";
+			cout << " mounted at " << mp;
+			if( dev.Is(StorageDevice::RootDevice) )
+			{
+				cout << " and this is the root device";
+			}
 		}
 	}
 	else
@@ -54,5 +59,28 @@ void TestStorageDevice::Test()
 	}
 #endif
 	CPPUNIT_ASSERT(devs.size() > 0 );
+
+	// We should always have one boot device and one root partition
+	bool isBoot = false;
+	bool isRoot = false;
+
+	for(const StorageDevice& dev: devs)
+	{
+		if( dev.Is(StorageDevice::BootDevice) )
+		{
+			isBoot = true;
+		}
+		list<StorageDevice> parts = dev.Partitions();
+		for(const auto& part: parts)
+		{
+			if( part.Is(StorageDevice::RootDevice) )
+			{
+				isRoot = true;
+			}
+		}
+	}
+
+	CPPUNIT_ASSERT_MESSAGE( "Missing boot device", isBoot);
+	CPPUNIT_ASSERT_MESSAGE( "Missing root device", isRoot);
 
 }
