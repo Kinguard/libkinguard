@@ -43,7 +43,7 @@ namespace Storage
 		};
 
 		Type asType(const char* name);
-		constexpr const char* asString(enum Type type);
+		const char* asString(enum Type type);
 	}
 
 	namespace Logical
@@ -60,7 +60,12 @@ namespace Storage
 		};
 
 		Type asType(const char* name);
-		constexpr const char* asString(enum Type type);
+		const char* asString(enum Type type);
+
+		constexpr const char* DefaultLVMDevice = "/dev/pool/data";
+		constexpr const char* DefaultLV = "data";
+		constexpr const char* DefaultVG = "pool";
+
 	}
 
 	namespace Encryption
@@ -77,7 +82,9 @@ namespace Storage
 		};
 
 		Type asType(const char* name);
-		constexpr const char* asString(enum Type type);
+		const char* asString(enum Type type);
+
+		constexpr const char* DefaultEncryptionDevice = "/dev/mapper/opi";
 	}
 
 	using  StorageType = std::tuple<Storage::Physical::Type, Storage::Logical::Type, Storage::Encryption::Type>;
@@ -86,6 +93,11 @@ namespace Storage
 }
 
 
+/**
+ * @brief The StorageConfig class
+ *
+ *        This class wraps the underlaying sysconfig storage configuration.
+ */
 class StorageConfig
 {
 public:
@@ -99,6 +111,13 @@ public:
 	 */
 	bool isStatic();
 
+
+	/**
+	 * @brief isValid check if configuration is usable and valid
+	 * @return true if valid
+	 */
+	bool isValid();
+
 	/**
 	 * @brief QueryPhysicalStorage Get possible physical storage types for device
 	 * @return list of physical storage types
@@ -110,6 +129,12 @@ public:
 	 * @return Physical storage type
 	 */
 	Storage::Physical::Type PhysicalStorage();
+
+	/**
+	 * @brief PhysicalStorage set physical storage type
+	 * @param type type to use
+	 */
+	void PhysicalStorage(Storage::Physical::Type type);
 
 	/**
 	 * @brief UsePhysicalStorage check if backing store uses storage type
@@ -125,6 +150,21 @@ public:
 	list<string> PhysicalDevices();
 
 	/**
+	 * @brief PhysicalStorage set partition to use when physical type is partition
+	 *        if type is not partition an exception will be thrown
+	 *
+	 * @param partition path to partition to use
+	 */
+	void PhysicalStorage(const string& partition);
+
+	/**
+	 * @brief PhysicalStorage set devices to use when physical type is Block
+	 *        If type is not block an exception will be thrown
+	 * @param devices
+	 */
+	void PhysicalStorage(const list<string>& devices);
+
+	/**
 	 * @brief QueryLogicalStorage Get possible logical storage types for device.
 	 * @param type physical type to retrieve information on
 	 * @return  list of logical storage types
@@ -136,6 +176,12 @@ public:
 	 * @return Logical storage type
 	 */
 	Storage::Logical::Type LogicalStorage();
+
+	/**
+	 * @brief LogicalStorage set logical storage type
+	 * @param type
+	 */
+	void LogicalStorage(Storage::Logical::Type type);
 
 	/**
 	 * @brief UseLogicalStorage check if storage uses this type
@@ -150,6 +196,19 @@ public:
 	 * @return list of devices
 	 */
 	list<string> LogicalDevices();
+
+	/**
+	 * @brief LogicalDevices set logical devices to use
+	 * @param devices
+	 */
+	void LogicalDevices(const list<string>& devices);
+
+	/**
+	 * @brief LogicalDefaults set default values for logical storage
+	 *        as defined in Storage::Logical
+	 */
+	void LogicalDefaults();
+
 
 	/**
 	 * @brief QueryEncryptionStorage, Get possible encryption methods for storage
@@ -167,6 +226,12 @@ public:
 	Storage::Encryption::Type EncryptionStorage();
 
 	/**
+	 * @brief EncryptionStorage set encryption type
+	 * @param type
+	 */
+	void EncryptionStorage(Storage::Encryption::Type type);
+
+	/**
 	 * @brief UseEncryption check if storage uses this type
 	 * @param type
 	 * @return true if storage uses encryption type
@@ -181,6 +246,19 @@ public:
 	list<string> EncryptionDevices();
 
 	/**
+	 * @brief EncryptionDevices set encryption devices to use
+	 *        currently only _one_ device is supported
+	 * @param devices
+	 */
+	void EncryptionDevices(const list<string>& devices);
+
+
+	/**
+	 * @brief EncryptionDefaults setup device with default encryption
+	 */
+	void EncryptionDefaults();
+
+	/**
 	 * @brief StorageDevice get top storage device depending upon config
 	 * @return device path to top storage device or empty string if unable
 	 *         to determine.
@@ -192,6 +270,10 @@ public:
 
 private:
 	void parseConfig();
+
+	bool encryptionValid();
+	bool logicalValid();
+	bool physicalValid();
 
 	Storage::Model::Type		model;
 	Storage::Physical::Type		physical;
