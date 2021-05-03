@@ -377,6 +377,9 @@ void StorageConfig::LogicalStorage(Storage::Logical::Type type)
 		cfg.RemoveKey("storage", "lvm_vg");
 		break;
 	case LVM:
+		cfg.PutKey("storage", "lvm_device", Storage::Logical::DefaultLVMDevice);
+		cfg.PutKey("storage", "lvm_lv", Storage::Logical::DefaultLV);
+		cfg.PutKey("storage", "lvm_vg", Storage::Logical::DefaultVG);
 		break;
 	}
 
@@ -416,11 +419,6 @@ void StorageConfig::LogicalDevices(const list<string> &devices)
 void StorageConfig::LogicalDefaults()
 {
 	this->LogicalStorage(Storage::Logical::LVM);
-	SysConfig cfg(true);
-	cfg.PutKey("storage", "lvm_device", Storage::Logical::DefaultLVMDevice);
-	cfg.PutKey("storage", "lvm_lv", Storage::Logical::DefaultLV);
-	cfg.PutKey("storage", "lvm_vg", Storage::Logical::DefaultVG);
-
 }
 
 /********************************************************************************************
@@ -480,6 +478,7 @@ void StorageConfig::EncryptionStorage(Storage::Encryption::Type type)
 		break;
 	}
 	case Storage::Encryption::LUKS:
+		SysConfig(true).PutKey("storage", "luks_device", Storage::Encryption::DefaultEncryptionDevice);
 		break;
 	}
 
@@ -517,7 +516,6 @@ void StorageConfig::EncryptionDevices(const list<string> &devices)
 void StorageConfig::EncryptionDefaults()
 {
 	this->EncryptionStorage(Storage::Encryption::LUKS);
-	SysConfig(true).PutKey("storage", "luks_device", Storage::Encryption::DefaultEncryptionDevice);
 }
 
 
