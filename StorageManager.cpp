@@ -26,7 +26,7 @@ StorageManager &StorageManager::Instance()
 }
 
 StorageManager::StorageManager():
-	device_new(false),
+	dosyncstorage(false),
 	initialized(false)
 {
 }
@@ -209,6 +209,9 @@ bool StorageManager::Initialize(const string& password)
 
 	logg << Logger::Debug << "Storagemanager initialize storage" << lend;
 
+	// Workaround to refresh config.
+	// TODO: should storageconfig be a singleton?
+	this->storageConfig = StorageConfig();
 
 	if( this->storageConfig.UsePhysicalStorage(Physical::None) )
 	{
@@ -239,6 +242,11 @@ bool StorageManager::Initialize(const string& password)
 					this->storageConfig.PhysicalStorage(),
 					this->storageConfig.LogicalStorage(),
 					this->storageConfig.EncryptionStorage());
+
+		logg << Logger::Debug << "Current storage config,"
+			<< " Physical: "<<Storage::Physical::asString(this->storageConfig.PhysicalStorage())
+			<< " Logical: " << Storage::Logical::asString(this->storageConfig.LogicalStorage())
+			<< " Encryption: " << Storage::Encryption::asString(this->storageConfig.EncryptionStorage()) << lend;
 
 		const auto& setupselection = smap.find(stype);
 
@@ -506,7 +514,6 @@ bool StorageManager::InitializeLUKS(const string& device )
 			return false;
 		}
 
-		this->device_new = true;
 	}
 
 	if( ! this->unlockLUKS( device, this->encryptionpassword ) )
@@ -521,6 +528,7 @@ bool StorageManager::InitializeLUKS(const string& device )
 bool StorageManager::setupStorageArea()
 {
 	string device = this->DevicePath();
+	logg << Logger::Debug << "Setting up storage area on: "  << device << lend;
 	try
 	{
 		const string mountpoint = SysConfig().GetKeyAsString("filesystem", "storagemount");
@@ -530,7 +538,7 @@ bool StorageManager::setupStorageArea()
 			DiskHelper::Umount( device );
 		}
 
-		if( this->device_new )
+		if( this->dosyncstorage )
 		{
 			logg << Logger::Debug << "Sync template data to storage device " << device <<lend;
 			// Sync data from root to storage
@@ -540,7 +548,7 @@ bool StorageManager::setupStorageArea()
 
 			DiskHelper::Umount(device);
 
-			this->device_new = false;
+			this->dosyncstorage = false;
 		}
 
 		// Mount in final place
@@ -587,6 +595,8 @@ bool StorageManager::InitPNNHandler()
 
 	DiskHelper::FormatPartition(this->getPysicalDevice(), Storage::PartitionName );
 
+	this->dosyncstorage = true;
+
 	return true;
 }
 
@@ -601,6 +611,8 @@ bool StorageManager::InitPLNHandler()
 
 	DiskHelper::FormatPartition(this->getLogicalDevice(), Storage::PartitionName );
 
+	this->dosyncstorage = true;
+
 	return true;
 }
 
@@ -614,6 +626,8 @@ bool StorageManager::InitPNLHandler()
 	}
 
 	DiskHelper::FormatPartition( this->getEncryptionDevice(), Storage::PartitionName );
+
+	this->dosyncstorage = true;
 
 	return true;
 }
@@ -634,6 +648,8 @@ bool StorageManager::InitPLLHandler()
 
 	DiskHelper::FormatPartition( this->getEncryptionDevice(), Storage::PartitionName );
 
+	this->dosyncstorage = true;
+
 	return true;
 }
 
@@ -647,6 +663,8 @@ bool StorageManager::InitBNNHandler()
 	}
 
 	DiskHelper::FormatPartition( DiskHelper::PartitionName( this->getPysicalDevice() ), Storage::PartitionName);
+
+	this->dosyncstorage = true;
 
 	return true;
 }
@@ -673,6 +691,8 @@ bool StorageManager::InitBLNHandler()
 
 	DiskHelper::FormatPartition( this->getLogicalDevice(), Storage::PartitionName );
 
+	this->dosyncstorage = true;
+
 	return true;
 }
 
@@ -691,6 +711,8 @@ bool StorageManager::InitBNLHandler()
 	}
 
 	DiskHelper::FormatPartition( this->getEncryptionDevice(), Storage::PartitionName );
+
+	this->dosyncstorage = true;
 
 	return true;
 }
@@ -721,6 +743,8 @@ bool StorageManager::InitBLLHandler()
 	}
 
 	DiskHelper::FormatPartition( this->getEncryptionDevice(), Storage::PartitionName );
+
+	this->dosyncstorage = true;
 
 	return true;
 }

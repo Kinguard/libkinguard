@@ -132,7 +132,7 @@ private:
 	 */
 	string getEncryptionDevice();
 
-	bool device_new;
+	bool dosyncstorage;
 	bool initialized;
 
 	string encryptionpassword;
