@@ -11,6 +11,8 @@
 #include <libopi/SysConfig.h>
 #include <libopi/DiskHelper.h>
 
+#include <algorithm>
+
 using namespace Utils;
 using namespace OPI;
 
@@ -280,7 +282,7 @@ bool StorageManager::Open(const string& password)
 	if( this->UseLocking() )
 	{
 		// Use lvm or raw blockdevice?
-		string ld = this->UseLogicalStorage() ? this->getLogicalDevice() : this->getPysicalDevice();
+		string ld = this->UseLogicalStorage() ? this->getLogicalDevice() : DiskHelper::PartitionName(this->getPysicalDevice());
 
 		Luks l( ld );
 
@@ -390,7 +392,13 @@ bool StorageManager::StorageAreaExists()
 			}
 			else
 			{
-				devs = this->storageConfig.PhysicalDevices();
+				// We need to get to the physical partitions here
+				list<string> pdevs = this->storageConfig.PhysicalDevices();
+
+				std::transform(
+							pdevs.begin(), pdevs.end(),
+							back_inserter(devs),
+							[](const string& dev) {	return DiskHelper::PartitionName(dev); });
 			}
 
 			for(const auto& dev: devs)
