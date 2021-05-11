@@ -156,6 +156,15 @@ bool StorageManager::partitionDisks(const list<string>& devs)
 
 bool StorageManager::mountDevice(const string &destination)
 {
+
+	StorageConfig scfg;
+
+	if( scfg.UsePhysicalStorage(Storage::Physical::None) )
+	{
+		logg << Logger::Error << "Device doesn't use separate storage, not mounting" << lend;
+		return false;
+	}
+
 	// Work out what to mount
 	string source = this->DevicePath();
 
@@ -414,7 +423,7 @@ bool StorageManager::StorageAreaExists()
 	}
 	catch( std::exception& e)
 	{
-		logg << Logger::Notice << "Failed to check" << StorageManager::DevicePath()<< ": " << e.what() <<lend;
+		logg << Logger::Notice << "Failed to check" << this->DevicePath()<< ": " << e.what() <<lend;
 		return false;
 	}
 
