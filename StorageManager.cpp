@@ -300,7 +300,7 @@ bool StorageManager::Open(const string& password)
 			logg << Logger::Debug << "Activating LUKS volume"<<lend;
 			if ( !l.Open("opi", password) )
 			{
-				logg << Logger::Debug << "Failed to openLUKS volume on "<<sysinfo.StorageDevicePath()<< lend;
+				logg << Logger::Debug << "Failed to openLUKS volume on "<< ld << lend;
 				this->global_error = "Unable to unlock crypto storage. (Wrong password?)";
 				return false;
 			}
@@ -464,6 +464,199 @@ bool StorageManager::DeviceExists()
 		return false;
 	}
 	return true;
+}
+
+// Find out if systemdevice has extra partiton suitable for storage
+// TODO: This is duplicated code with SM::QueryStorage*
+static bool hasPartition(const list<StorageDevice>& devs)
+{
+	for( const auto& dev: devs)
+	{
+		if( dev.Is(StorageDevice::BootDevice) )
+		{
+			list<StorageDevice> parts = dev.Partitions();
+			for( const auto& part : parts)
+			{
+				// There exists a partition on device that is
+				// not the root device
+				if( ! part.Is(StorageDevice::RootDevice) )
+				{
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+// TODO: This is duplicated code with SM::QueryStorage*
+static bool hasStorageDevice(const list<StorageDevice>& devs)
+{
+	for( const auto& dev: devs)
+	{
+		// There exists a physical storage device that is not the boot device
+		if( dev.Is(StorageDevice::Physical) && ! dev.Is(StorageDevice::BootDevice) )
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+list<Storage::Physical::Type> StorageManager::QueryPhysical()
+{
+	StorageConfig scf;
+
+	if( ! scf.isValid() )
+	{
+		return {};
+	}
+
+	list<Storage::Physical::Type> pt = scf.QueryPhysicalStorage();
+	list<Storage::Physical::Type> ret;
+	list<StorageDevice> devs = StorageDevice::Devices();
+
+	for(const auto& type: pt)
+	{
+		switch(type)
+		{
+		case Storage::Physical::None:
+			ret.emplace_back(type);
+			break;
+		case Storage::Physical::Partition:
+			// Got to have an extra partition on system device
+			if( hasPartition(devs))
+			{
+				ret.emplace_back(type);
+			}
+			break;
+		case Storage::Physical::Block:
+			// Got to have an extra block device
+			if( hasStorageDevice(devs) )
+			{
+				ret.emplace_back(type);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
+}
+
+list<Storage::Logical::Type> StorageManager::QueryLogical(Storage::Physical::Type types)
+{
+	StorageConfig scf;
+
+	if( ! scf.isValid() )
+	{
+		return {};
+	}
+
+	list<Storage::Logical::Type> ret;
+	list<Storage::Logical::Type> lts = scf.QueryLogicalStorage(types);
+	list<StorageDevice> devs = StorageDevice::Devices();
+
+	for( const auto& lt : lts)
+	{
+		switch(lt)
+		{
+		case Storage::Logical::None:
+			ret.emplace_back(lt);
+			break;
+		case Storage::Logical::LVM:
+			// Need partition or block device present
+			if( hasPartition(devs) || hasStorageDevice(devs) )
+			{
+				ret.emplace_back(lt);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
+}
+
+list<Storage::Encryption::Type> StorageManager::QueryEncryption(Storage::Physical::Type phys, Storage::Logical::Type log)
+{
+	StorageConfig scf;
+
+	if( ! scf.isValid() )
+	{
+		return {};
+	}
+
+	list<Storage::Encryption::Type> ret;
+	list<StorageDevice> devs = StorageDevice::Devices();
+	list<Storage::Encryption::Type> encs = scf.QueryEncryptionStorage(phys, log);
+
+	for( const auto& enc: encs)
+	{
+		switch( enc )
+		{
+		case Storage::Encryption::None:
+			ret.emplace_back(enc);
+			break;
+		case Storage::Encryption::LUKS:
+			// Need partition or block device present
+			if( hasPartition(devs) || hasStorageDevice(devs) )
+			{
+				ret.emplace_back(enc);
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	return ret;
+}
+
+list<StorageDevice> StorageManager::QueryStorageDevices()
+{
+	list<StorageDevice> ret;
+
+	list<StorageDevice> devs = StorageDevice::Devices();
+
+	for( const auto& dev: devs)
+	{
+		if( dev.Is(StorageDevice::Physical) && ! dev.Is(StorageDevice::BootDevice) )
+		{
+			ret.emplace_back(dev);
+		}
+	}
+
+	return ret;
+}
+
+list<StorageDevice> StorageManager::QueryStoragePartitions()
+{
+	list<StorageDevice> ret;
+
+	list<StorageDevice> devs = StorageDevice::Devices();
+
+	for( const auto& dev: devs)
+	{
+		if( dev.Is(StorageDevice::BootDevice) )
+		{
+			list<StorageDevice> parts = dev.Partitions();
+			for( const auto& part : parts)
+			{
+				// There exists a partition on device that is
+				// not the root device
+				if( ! part.Is(StorageDevice::RootDevice) )
+				{
+					ret.emplace_back(part);
+				}
+			}
+		}
+	}
+
+	return ret;
 }
 
 size_t StorageManager::Size()

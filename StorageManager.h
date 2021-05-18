@@ -77,6 +77,50 @@ public:
 	bool DeviceExists();
 
 	/**
+	 * @brief QueryPhysical for this device which physical storage
+	 *        types are available?
+	 *
+	 *        The difference between these and the ones in StorageConfig
+	 *        is that these return what is possible on _this_ sytem
+	 *        while StorageConfig says what combinations is possible.
+	 *
+	 * @return list with physical storage types
+	 */
+	list<Storage::Physical::Type> QueryPhysical();
+
+	/**
+	 * @brief QueryLogical, for this device which logical storage
+	 *        types are available?
+	 * @return list with logical storage types
+	 */
+	list<Storage::Logical::Type> QueryLogical(Storage::Physical::Type types);
+
+	/**
+	 * @brief QueryEncryption, for this device which encryption storage
+	 *        types are available?
+	 * @return list whit encryption storage types
+	 */
+	list<Storage::Encryption::Type> QueryEncryption(Storage::Physical::Type phys, Storage::Logical::Type log);
+
+
+	/**
+	 * @brief QueryStorageDevices get all suitable physical storage devices
+	 *
+	 *        This method retrieves all disks suitable for an install
+	 *
+	 * @return list with devices
+	 */
+	list<StorageDevice> QueryStorageDevices();
+
+	/**
+	 * @brief QueryStoragePartitions get all suitable partitions of system disk
+	 *        Get all partitions on system disk suitable for storage
+	 *
+	 * @return list with partition devices
+	 */
+	list<StorageDevice> QueryStoragePartitions();
+
+	/**
 	 * @brief Size get size of raw device
 	 * @return size of device
 	 */

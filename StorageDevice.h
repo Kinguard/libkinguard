@@ -19,16 +19,16 @@ public:
 
 	enum Characteristic
 	{
-		Mounted,
-		Partition,
-		Physical,
-		ReadOnly,
-		Removable,
-		RootDevice,
-		DeviceMapper,
-		LVMDevice,
-		LUKSDevice,
-		BootDevice,
+		Mounted,		/**< Partition is mounted				*/
+		Partition,		/**< Device is a partition				*/
+		Physical,		/**< Device is physical					*/
+		ReadOnly,		/**< Device is a read only device		*/
+		Removable,		/**< Device is removable				*/
+		RootDevice,		/**< This is the root partition			*/
+		DeviceMapper,	/**< This is a DM-device				*/
+		LVMDevice,		/**< This is a logical volume device	*/
+		LUKSDevice,		/**< This is an encrypted LUKS device	*/
+		BootDevice,		/**< This is the system/boot device		*/
 	};
 
 	/**
