@@ -508,11 +508,6 @@ list<Storage::Physical::Type> StorageManager::QueryPhysical()
 {
 	StorageConfig scf;
 
-	if( ! scf.isValid() )
-	{
-		return {};
-	}
-
 	list<Storage::Physical::Type> pt = scf.QueryPhysicalStorage();
 	list<Storage::Physical::Type> ret;
 	list<StorageDevice> devs = StorageDevice::Devices();
@@ -550,11 +545,6 @@ list<Storage::Logical::Type> StorageManager::QueryLogical(Storage::Physical::Typ
 {
 	StorageConfig scf;
 
-	if( ! scf.isValid() )
-	{
-		return {};
-	}
-
 	list<Storage::Logical::Type> ret;
 	list<Storage::Logical::Type> lts = scf.QueryLogicalStorage(types);
 	list<StorageDevice> devs = StorageDevice::Devices();
@@ -584,11 +574,6 @@ list<Storage::Logical::Type> StorageManager::QueryLogical(Storage::Physical::Typ
 list<Storage::Encryption::Type> StorageManager::QueryEncryption(Storage::Physical::Type phys, Storage::Logical::Type log)
 {
 	StorageConfig scf;
-
-	if( ! scf.isValid() )
-	{
-		return {};
-	}
 
 	list<Storage::Encryption::Type> ret;
 	list<StorageDevice> devs = StorageDevice::Devices();
