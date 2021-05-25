@@ -91,6 +91,13 @@ namespace Storage
 		bool operator<(const Base<Der,T>& obj){ return priority < obj.priority;}
 
 		/**
+		 * @brief operator == used for equal comparison
+		 * @param obj
+		 * @return true if objects equal
+		 */
+		bool operator==(const Base<Der,T>& obj){ return priority == obj.priority;}
+
+		/**
 		 * @brief fromType construct list of storage objects
 		 * @param typelist list with types
 		 * @return list with objects
