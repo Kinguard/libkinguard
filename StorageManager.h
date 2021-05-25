@@ -86,21 +86,21 @@ public:
 	 *
 	 * @return list with physical storage types
 	 */
-	list<Storage::Physical::Type> QueryPhysical();
+	list<Storage::Physical::Physical> QueryPhysical();
 
 	/**
 	 * @brief QueryLogical, for this device which logical storage
 	 *        types are available?
 	 * @return list with logical storage types
 	 */
-	list<Storage::Logical::Type> QueryLogical(Storage::Physical::Type types);
+	list<Storage::Logical::Logical> QueryLogical(Storage::Physical::Type types);
 
 	/**
 	 * @brief QueryEncryption, for this device which encryption storage
 	 *        types are available?
 	 * @return list whit encryption storage types
 	 */
-	list<Storage::Encryption::Type> QueryEncryption(Storage::Physical::Type phys, Storage::Logical::Type log);
+	list<Storage::Encryption::Encryption> QueryEncryption(Storage::Physical::Type phys, Storage::Logical::Type log);
 
 
 	/**

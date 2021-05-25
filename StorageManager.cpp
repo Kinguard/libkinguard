@@ -504,12 +504,12 @@ static bool hasStorageDevice(const list<StorageDevice>& devs)
 	return false;
 }
 
-list<Storage::Physical::Type> StorageManager::QueryPhysical()
+list<Storage::Physical::Physical> StorageManager::QueryPhysical()
 {
 	StorageConfig scf;
 
 	list<Storage::Physical::Type> pt = scf.QueryPhysicalStorage();
-	list<Storage::Physical::Type> ret;
+	list<Storage::Physical::Physical> ret;
 	list<StorageDevice> devs = StorageDevice::Devices();
 
 	for(const auto& type: pt)
@@ -517,20 +517,20 @@ list<Storage::Physical::Type> StorageManager::QueryPhysical()
 		switch(type)
 		{
 		case Storage::Physical::None:
-			ret.emplace_back(type);
+			ret.emplace_back(Storage::Physical::Physical(type));
 			break;
 		case Storage::Physical::Partition:
 			// Got to have an extra partition on system device
 			if( hasPartition(devs))
 			{
-				ret.emplace_back(type);
+				ret.emplace_back(Storage::Physical::Physical(type));
 			}
 			break;
 		case Storage::Physical::Block:
 			// Got to have an extra block device
 			if( hasStorageDevice(devs) )
 			{
-				ret.emplace_back(type);
+				ret.emplace_back(Storage::Physical::Physical(type));
 			}
 			break;
 		default:
@@ -541,11 +541,11 @@ list<Storage::Physical::Type> StorageManager::QueryPhysical()
 	return ret;
 }
 
-list<Storage::Logical::Type> StorageManager::QueryLogical(Storage::Physical::Type types)
+list<Storage::Logical::Logical> StorageManager::QueryLogical(Storage::Physical::Type types)
 {
 	StorageConfig scf;
 
-	list<Storage::Logical::Type> ret;
+	list<Storage::Logical::Logical> ret;
 	list<Storage::Logical::Type> lts = scf.QueryLogicalStorage(types);
 	list<StorageDevice> devs = StorageDevice::Devices();
 
@@ -554,13 +554,13 @@ list<Storage::Logical::Type> StorageManager::QueryLogical(Storage::Physical::Typ
 		switch(lt)
 		{
 		case Storage::Logical::None:
-			ret.emplace_back(lt);
+			ret.emplace_back(Storage::Logical::Logical(lt));
 			break;
 		case Storage::Logical::LVM:
 			// Need partition or block device present
 			if( hasPartition(devs) || hasStorageDevice(devs) )
 			{
-				ret.emplace_back(lt);
+				ret.emplace_back(Storage::Logical::Logical(lt));
 			}
 			break;
 		default:
@@ -571,11 +571,11 @@ list<Storage::Logical::Type> StorageManager::QueryLogical(Storage::Physical::Typ
 	return ret;
 }
 
-list<Storage::Encryption::Type> StorageManager::QueryEncryption(Storage::Physical::Type phys, Storage::Logical::Type log)
+list<Storage::Encryption::Encryption> StorageManager::QueryEncryption(Storage::Physical::Type phys, Storage::Logical::Type log)
 {
 	StorageConfig scf;
 
-	list<Storage::Encryption::Type> ret;
+	list<Storage::Encryption::Encryption> ret;
 	list<StorageDevice> devs = StorageDevice::Devices();
 	list<Storage::Encryption::Type> encs = scf.QueryEncryptionStorage(phys, log);
 
@@ -584,13 +584,13 @@ list<Storage::Encryption::Type> StorageManager::QueryEncryption(Storage::Physica
 		switch( enc )
 		{
 		case Storage::Encryption::None:
-			ret.emplace_back(enc);
+			ret.emplace_back(Storage::Encryption::Encryption(enc));
 			break;
 		case Storage::Encryption::LUKS:
 			// Need partition or block device present
 			if( hasPartition(devs) || hasStorageDevice(devs) )
 			{
-				ret.emplace_back(enc);
+				ret.emplace_back(Storage::Encryption::Encryption(enc));
 			}
 			break;
 		default:
