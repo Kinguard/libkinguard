@@ -15,121 +15,74 @@ namespace KGP
 {
 namespace Storage
 {
+
 namespace Model
 {
-	Type asType(const char* name)
+	const vector<TypeEntry<enum Type> > &Model::TypeEntries()
 	{
-		static const map<const string, Type> t =
+		static vector<struct TypeEntry<enum Type>> tt=
 		{
-			{ "undefined",	Undefined },
-			{ "static",		Static },
-			{ "dynamic",	Dynamic },
-			{ "unknown",	Unknown },
+			{"undefined",	"Undefined",	Undefined},
+			{"static",		"Static",		Static},
+			{"dynamic",		"Dynamic",		Dynamic},
+			{"unknown",		"Unknown",		Unknown}
 		};
 
-		return t.at(name);
+		return tt;
 	}
 
-	static const array<const char*,4> typenames=
-	{
-		"undefined",
-		"static",
-		"dynamic",
-		"unknown",
-	};
-
-	const char *asString(Type type)
-	{
-		return typenames.at(type);
-	}
 } // NS Model
+
 
 namespace Physical
 {
-	Type asType(const char* name)
+	const vector<TypeEntry<enum Type> > &Physical::TypeEntries()
 	{
-		static const map<const string, Type> t =
+		static vector<struct TypeEntry<enum Type>> tt=
 		{
-			{ "undefined", Undefined },
-			{ "none", None },
-			{ "partition", Partition },
-			{ "block", Block },
-			{ "unknown", Unknown },
+			{"undefined",	"Undefined",					Undefined},
+			{"none",		"None",							None},
+			{"partition",	"Use partition(s) on OS disk",	Partition},
+			{"block",		"Use block device(s)",			Block},
+			{"unknown",		"Unknown",						Unknown}
 		};
-		return t.at(name);
+		return tt;
 	}
 
-	static const array<const char*,5> typenames=
-	{
-		"undefined",
-		"none",
-		"partition",
-		"block",
-		"unknown"
-	};
-
-	const char *asString(Type type)
-	{
-		return typenames.at(type);
-	}
 } // NS Phys
 
 
 namespace Logical
 {
 
-	Type asType(const char* name)
+	const vector<TypeEntry<enum Type> > &Logical::TypeEntries()
 	{
-		static const map<const string, Type> t =
+		static vector<struct TypeEntry<enum Type>> tt=
 		{
-			{ "undefined", Undefined },
-			{ "none", None },
-			{ "lvm", LVM },
-			{ "unknown", Unknown },
+			{"undefined",	"Undefined",							Undefined},
+			{"none",		"None",									None},
+			{"lvm",			"Use logical volume to group storage",	LVM},
+			{"unknown",		"Unknown",								Unknown}
 		};
-		return t.at(name);
+		return tt;
 	}
 
-	static const array<const char*,4> typenames=
-	{
-		"undefined",
-		"none",
-		"lvm",
-		"unknown"
-	};
-
-	const char *asString(Type type)
-	{
-		return typenames.at(type);
-	}
 } // NS Logical
 
 namespace Encryption
 {
-	Type asType(const char* name)
+	const vector<TypeEntry<enum Type> > &Encryption::TypeEntries()
 	{
-		static const map<const string, Type> t =
+		static vector<struct TypeEntry<enum Type>> tt=
 		{
-			{ "undefined", Undefined },
-			{ "none", None },
-			{ "luks", LUKS },
-			{ "unknown", Unknown },
+			{"undefined",	"Undefined",							Undefined},
+			{"none",		"None",									None},
+			{"luks",		"Use LUKS encryption on storage",		LUKS},
+			{"unknown",		"Unknown",								Unknown}
 		};
-		return t.at(name);
+		return tt;
 	}
 
-	const char *asString(Type type)
-	{
-		static const array<const char*,4> typenames=
-		{
-			"undefined",
-			"none",
-			"luks",
-			"unknown"
-		};
-
-		return typenames.at(type);
-	}
 } // NS Encryption
 
 } // NS Storage
@@ -200,12 +153,12 @@ StorageConfig::StorageConfig():
 
 bool StorageConfig::isStatic()
 {
-	return this->model == Storage::Model::Static;
+	return this->model.Type() == Storage::Model::Static;
 }
 
 bool StorageConfig::isValid()
 {
-	if( this->model == Storage::Model::Static )
+	if( this->model.Type() == Storage::Model::Static )
 	{
 		// Always correct config in static case
 		return true;
@@ -237,17 +190,17 @@ list<Storage::Physical::Type> StorageConfig::QueryPhysicalStorage()
 	return { None, Partition, Block };
 }
 
-Storage::Physical::Type StorageConfig::PhysicalStorage()
+Storage::Physical::Physical StorageConfig::PhysicalStorage()
 {
 	return this->physical;
 }
 
 void StorageConfig::PhysicalStorage(Storage::Physical::Type type)
 {
-	this->physical = type;
+	this->physical =Storage::Physical::Physical(type);
 
 	SysConfig cfg(true);
-	cfg.PutKey("storage", "physical", Storage::Physical::asString(type) );
+	cfg.PutKey("storage", "physical", Storage::Physical::Physical::toName(type) );
 
 	switch(type)
 	{
@@ -269,17 +222,17 @@ void StorageConfig::PhysicalStorage(Storage::Physical::Type type)
 
 bool StorageConfig::UsePhysicalStorage(Storage::Physical::Type type)
 {
-	return this->physical == type;
+	return this->physical.Type() == type;
 }
 
 list<string> StorageConfig::PhysicalDevices()
 {
-	if( this->physical == Storage::Physical::Partition )
+	if( this->physical.Type() == Storage::Physical::Partition )
 	{
 		return { this->syscfg.GetKeyAsString("storage","partition_path") };
 	}
 
-	if( this->physical == Storage::Physical::Block )
+	if( this->physical.Type() == Storage::Physical::Block )
 	{
 		return this->syscfg.GetKeyAsStringList("storage","block_devices");
 	}
@@ -289,9 +242,9 @@ list<string> StorageConfig::PhysicalDevices()
 
 void StorageConfig::PhysicalStorage(const string &partition)
 {
-	if( this->physical != Storage::Physical::Partition )
+	if( this->physical.Type() != Storage::Physical::Partition )
 	{
-		throw std::runtime_error("Illegal Physical storage type for partition "s + Storage::Physical::asString(this->physical) );
+		throw std::runtime_error("Illegal Physical storage type for partition "s + this->physical.Name() );
 	}
 
 	SysConfig cfg(true);
@@ -302,9 +255,9 @@ void StorageConfig::PhysicalStorage(const string &partition)
 
 void StorageConfig::PhysicalStorage(const list<string> &devices)
 {
-	if( this->physical != Storage::Physical::Block )
+	if( this->physical.Type() != Storage::Physical::Block )
 	{
-		throw std::runtime_error("Illegal Physical storage type for block devices "s + Storage::Physical::asString(this->physical) );
+		throw std::runtime_error("Illegal Physical storage type for block devices "s + this->physical.Name() );
 	}
 
 	SysConfig cfg(true);
@@ -353,7 +306,7 @@ list<Storage::Logical::Type> StorageConfig::QueryLogicalStorage(Storage::Physica
 	return {};
 }
 
-Storage::Logical::Type StorageConfig::LogicalStorage()
+Storage::Logical::Logical StorageConfig::LogicalStorage()
 {
 	return this->logical;
 }
@@ -365,7 +318,7 @@ void StorageConfig::LogicalStorage(Storage::Logical::Type type)
 	this->logical = type;
 
 	SysConfig cfg(true);
-	cfg.PutKey("storage","logical", asString(type));
+	cfg.PutKey("storage","logical", Logical::toName(type));
 
 	switch( type )
 	{
@@ -387,12 +340,12 @@ void StorageConfig::LogicalStorage(Storage::Logical::Type type)
 
 bool StorageConfig::UseLogicalStorage(Storage::Logical::Type type)
 {
-	return this->logical == type;
+	return this->logical.Type() == type;
 }
 
 list<string> StorageConfig::LogicalDevices()
 {
-	if( this->logical == Storage::Logical::LVM )
+	if( this->logical.Type() == Storage::Logical::LVM )
 	{
 		return { this->syscfg.GetKeyAsString("storage","lvm_device") };
 	}
@@ -401,9 +354,9 @@ list<string> StorageConfig::LogicalDevices()
 
 void StorageConfig::LogicalDevices(const list<string> &devices)
 {
-	if( this->logical != Storage::Logical::LVM )
+	if( this->logical.Type() != Storage::Logical::LVM )
 	{
-		throw std::runtime_error("Illegal set logical devices when type is "s + Storage::Logical::asString(this->logical) );
+		throw std::runtime_error("Illegal set logical devices when type is "s + this->logical.Name() );
 	}
 
 	if( devices.size() != 1 )
@@ -456,7 +409,7 @@ list<Storage::Encryption::Type> StorageConfig::QueryEncryptionStorage(Storage::P
 	return {None, LUKS};
 }
 
-Storage::Encryption::Type StorageConfig::EncryptionStorage()
+Storage::Encryption::Encryption StorageConfig::EncryptionStorage()
 {
 	return this->encryption;
 }
@@ -466,7 +419,7 @@ void StorageConfig::EncryptionStorage(Storage::Encryption::Type type)
 	this->encryption = type;
 
 	SysConfig cfg(true);
-	cfg.PutKey("storage", "encryption", Storage::Encryption::asString(type) );
+	cfg.PutKey("storage", "encryption", Storage::Encryption::Encryption::toName(type) );
 
 	switch( type )
 	{
@@ -486,12 +439,12 @@ void StorageConfig::EncryptionStorage(Storage::Encryption::Type type)
 
 bool StorageConfig::UseEncryption(Storage::Encryption::Type type)
 {
-	return this->encryption == type;
+	return this->encryption.Type() == type;
 }
 
 list<string> StorageConfig::EncryptionDevices()
 {
-	if( this->encryption == Storage::Encryption::LUKS )
+	if( this->encryption.Type() == Storage::Encryption::LUKS )
 	{
 		return {this->syscfg.GetKeyAsString("storage","luks_device") };
 	}
@@ -500,9 +453,9 @@ list<string> StorageConfig::EncryptionDevices()
 
 void StorageConfig::EncryptionDevices(const list<string> &devices)
 {
-	if( this->encryption != Storage::Encryption::LUKS )
+	if( this->encryption.Type() != Storage::Encryption::LUKS )
 	{
-		throw std::runtime_error("Illegal encryption devices when type is "s + Storage::Encryption::asString(this->encryption) );
+		throw std::runtime_error("Illegal encryption devices when type is "s + this->encryption.Name() );
 	}
 
 	if( devices.size() != 1)
@@ -573,10 +526,10 @@ void StorageConfig::parseConfig()
 {
 	using namespace Storage;
 
-	this->model =		Model::asType( this->syscfg.GetKeyAsString("storage","model").c_str() );
-	this->physical =	Physical::asType( this->syscfg.GetKeyAsString("storage","physical").c_str() );
-	this->logical =		Logical::asType( this->syscfg.GetKeyAsString("storage","logical").c_str() );
-	this->encryption =	Encryption::asType( this->syscfg.GetKeyAsString("storage","encryption").c_str() );
+	this->model =		Model::Model::fromName( this->syscfg.GetKeyAsString("storage","model").c_str() );
+	this->physical =	Physical::Physical::fromName( this->syscfg.GetKeyAsString("storage","physical").c_str() );
+	this->logical =		Logical::Logical::fromName( this->syscfg.GetKeyAsString("storage","logical").c_str() );
+	this->encryption =	Encryption::Encryption::fromName( this->syscfg.GetKeyAsString("storage","encryption").c_str() );
 
 }
 
@@ -585,7 +538,7 @@ bool StorageConfig::encryptionValid()
 	using namespace Storage;
 	using namespace Storage::Encryption;
 
-	switch (this->encryption )
+	switch (this->encryption.Type() )
 	{
 	case None:
 		return this->logicalValid();
@@ -607,7 +560,7 @@ bool StorageConfig::logicalValid()
 {
 	using namespace Storage;
 	using namespace Storage::Logical;
-	switch( this->logical )
+	switch( this->logical.Type() )
 	{
 	case None:
 		return this->physicalValid();
@@ -635,7 +588,7 @@ bool StorageConfig::physicalValid()
 	bool partition = cfg.HasKey("storage", "partition_path");
 	bool block = cfg.HasKey("storage", "block_devices");
 
-	switch (this->physical)
+	switch (this->physical.Type())
 	{
 	case None:
 		return !partition && !block;

@@ -250,14 +250,14 @@ bool StorageManager::Initialize(const string& password)
 
 		// Workout setup scenario
 		Storage::StorageType stype = make_tuple(
-					this->storageConfig.PhysicalStorage(),
-					this->storageConfig.LogicalStorage(),
-					this->storageConfig.EncryptionStorage());
+					this->storageConfig.PhysicalStorage().Type(),
+					this->storageConfig.LogicalStorage().Type(),
+					this->storageConfig.EncryptionStorage().Type());
 
 		logg << Logger::Debug << "Current storage config,"
-			<< " Physical: "<<Storage::Physical::asString(this->storageConfig.PhysicalStorage())
-			<< " Logical: " << Storage::Logical::asString(this->storageConfig.LogicalStorage())
-			<< " Encryption: " << Storage::Encryption::asString(this->storageConfig.EncryptionStorage()) << lend;
+			<< " Physical: "<<this->storageConfig.PhysicalStorage().Name()
+			<< " Logical: " << this->storageConfig.LogicalStorage().Name()
+			<< " Encryption: " << this->storageConfig.EncryptionStorage().Name() << lend;
 
 		const auto& setupselection = smap.find(stype);
 

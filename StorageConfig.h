@@ -2,6 +2,7 @@
 #define STORAGECONFIG_H
 
 #include <tuple>
+#include <cstring>
 
 #include <libopi/SysConfig.h>
 
@@ -12,6 +13,151 @@ namespace KGP
 
 namespace Storage
 {
+
+	template<class Type> struct TypeEntry
+	{
+		const char*	name;				/**< Identifying name (For use in config files etc) */
+		const char* description;		/**< Human readable description of type */
+		Type type;						/**< Type identifier */
+	};
+
+	/**
+	 * @brief base object for storage objects
+	 *
+	 */
+	template<class Der, class T> class Base
+	{
+	private:
+
+		T type;						/**< Which type */
+		int priority{};				/**< Prio, for sorting */
+		const char *name{};			/**< Type name */
+		const char *description{};	/**< Human readable description */
+
+		/**
+		 * @brief setMembers populate members from type table
+		 * @param t type to use for initialization
+		 */
+		void setMembers(T t)
+		{
+			for(const auto& e: Der::TypeEntries())
+			{
+				if( e.type == t )
+				{
+					this->name = e.name;
+					this->description = e.description;
+					return;
+				}
+			}
+			throw std::out_of_range("No such type");
+		}
+
+	public:
+
+		/**
+		 * @brief Base construct object upon given type
+		 * @param t
+		 */
+		Base(T t):
+			type(t),
+			priority(t)
+		{
+			this->setMembers(t);
+		}
+
+		/**
+		 * @brief Name get name of this storage type
+		 * @return string with machine version of type
+		 */
+		[[nodiscard]] const char* Name() const { return this->name; }
+
+		/**
+		 * @brief Description get human readable description of storage type
+		 * @return string with description
+		 */
+		[[nodiscard]] const char* Description() const { return this->description;}
+
+		/**
+		 * @brief Type get type identifier for storage type
+		 * @return type
+		 */
+		[[nodiscard]] T Type() const { return this->type; }
+
+		/**
+		 * @brief operator < used for sorting items
+		 * @param obj
+		 * @return true if this object is less than provided object
+		 */
+		bool operator<(const Base<Der,T>& obj){ return priority < obj.priority;}
+
+		/**
+		 * @brief fromType construct list of storage objects
+		 * @param typelist list with types
+		 * @return list with objects
+		 */
+		static std::list<Der> fromType(const std::list<T>& typelist)
+		{
+			std::list<Der> ret;
+			for(const auto& type: typelist)
+			{
+				ret.emplace_back(Der(type));
+			}
+			return ret;
+		}
+
+		/**
+		 * @brief toName retrieve machine descriptive name of type
+		 * @param type
+		 * @return machine descriptive text
+		 */
+		static const char* toName(T type)
+		{
+			for(const auto& entry: Der::TypeEntries())
+			{
+				if( entry.type == type )
+				{
+					return entry.name;
+				}
+			}
+			throw std::out_of_range("Type not found");
+		}
+
+		/**
+		 * @brief toType retrieve type from machine name of type
+		 * @param name name of type
+		 * @return type of object
+		 */
+		static T toType(const char* name)
+		{
+			for(const auto& entry: Der::TypeEntries())
+			{
+				if( strcmp(entry.name, name) == 0)
+				{
+					return entry.type;
+				}
+			}
+			throw std::out_of_range("Element "s + name + " not found"s);
+		}
+
+		/**
+		 * @brief fromName construct an object from a descriptive name
+		 * @param name name of object
+		 * @return object
+		 */
+		static Der fromName(const char* name)
+		{
+			for(const auto& entry: Der::TypeEntries())
+			{
+				if( strcmp(entry.name, name) == 0)
+				{
+					return Der(entry.type);
+				}
+			}
+			throw std::out_of_range("Element "s + name + " not found"s);
+		}
+
+	};
+
 	namespace Model {
 		/**
 		 * @brief The Type enum, enumerates storage types
@@ -24,8 +170,14 @@ namespace Storage
 			Unknown,	/**< Unable to determine atm */
 		};
 
-		Type asType(const char* name);
-		const char* asString(enum Type type);
+		class Model: public Base<Model,Type>
+		{
+		public:
+			Model(enum Type type):Base<Model,enum Type>(type){}
+
+			static const vector<TypeEntry<enum Type>>& TypeEntries();
+
+		};
 	}
 
 	namespace Physical
@@ -42,8 +194,14 @@ namespace Storage
 			Unknown,	/**< Unable to determine atm */
 		};
 
-		Type asType(const char* name);
-		const char* asString(enum Type type);
+		class Physical: public Base<Physical,Type>
+		{
+		public:
+			Physical(enum Type type):Base<Physical,enum Type>(type){}
+
+			static const vector<TypeEntry<enum Type>>& TypeEntries();
+
+		};
 	}
 
 	namespace Logical
@@ -59,8 +217,14 @@ namespace Storage
 			Unknown,	/**< Unable to determine atm */
 		};
 
-		Type asType(const char* name);
-		const char* asString(enum Type type);
+		class Logical: public Base<Logical,Type>
+		{
+		public:
+			Logical(enum Type type):Base<Logical,enum Type>(type){}
+
+			static const vector<TypeEntry<enum Type>>& TypeEntries();
+
+		};
 
 		constexpr const char* DefaultLVMDevice = "/dev/pool/data";
 		constexpr const char* DefaultLV = "data";
@@ -81,8 +245,14 @@ namespace Storage
 			Unknown,	/**< Unable to deterimine atm */
 		};
 
-		Type asType(const char* name);
-		const char* asString(enum Type type);
+		class Encryption: public Base<Encryption,Type>
+		{
+		public:
+			Encryption(enum Type type):Base<Encryption,enum Type>(type){}
+
+			static const vector<TypeEntry<enum Type>>& TypeEntries();
+
+		};
 
 		constexpr const char* DefaultEncryptionDevice = "/dev/mapper/opi";
 	}
@@ -128,7 +298,7 @@ public:
 	 * @brief PhysicalStorage, get current physical storage type
 	 * @return Physical storage type
 	 */
-	Storage::Physical::Type PhysicalStorage();
+	Storage::Physical::Physical PhysicalStorage();
 
 	/**
 	 * @brief PhysicalStorage set physical storage type
@@ -175,7 +345,7 @@ public:
 	 * @brief LogicalStorage get current logical storage type
 	 * @return Logical storage type
 	 */
-	Storage::Logical::Type LogicalStorage();
+	Storage::Logical::Logical LogicalStorage();
 
 	/**
 	 * @brief LogicalStorage set logical storage type
@@ -223,7 +393,7 @@ public:
 	 * @brief EncryptionStorage, get currently set encryption type
 	 * @return Encryption type
 	 */
-	Storage::Encryption::Type EncryptionStorage();
+	Storage::Encryption::Encryption EncryptionStorage();
 
 	/**
 	 * @brief EncryptionStorage set encryption type
@@ -275,10 +445,10 @@ private:
 	bool logicalValid();
 	bool physicalValid();
 
-	Storage::Model::Type		model;
-	Storage::Physical::Type		physical;
-	Storage::Logical::Type		logical;
-	Storage::Encryption::Type	encryption;
+	Storage::Model::Model			model;
+	Storage::Physical::Physical		physical;
+	Storage::Logical::Logical		logical;
+	Storage::Encryption::Encryption	encryption;
 
 	OPI::SysConfig syscfg;
 };
