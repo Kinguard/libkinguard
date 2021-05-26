@@ -41,7 +41,7 @@ namespace Physical
 		static vector<struct TypeEntry<enum Type>> tt=
 		{
 			{"undefined",	"Undefined",					Undefined},
-			{"none",		"None",							None},
+			{"none",		"Use local OS partition",		None},
 			{"partition",	"Use partition(s) on OS disk",	Partition},
 			{"block",		"Use block device(s)",			Block},
 			{"unknown",		"Unknown",						Unknown}
@@ -60,7 +60,7 @@ namespace Logical
 		static vector<struct TypeEntry<enum Type>> tt=
 		{
 			{"undefined",	"Undefined",							Undefined},
-			{"none",		"None",									None},
+			{"none",		"Don't use logical volume storage",		None},
 			{"lvm",			"Use logical volume to group storage",	LVM},
 			{"unknown",		"Unknown",								Unknown}
 		};
@@ -76,7 +76,7 @@ namespace Encryption
 		static vector<struct TypeEntry<enum Type>> tt=
 		{
 			{"undefined",	"Undefined",							Undefined},
-			{"none",		"None",									None},
+			{"none",		"Don't use encryption",					None},
 			{"luks",		"Use LUKS encryption on storage",		LUKS},
 			{"unknown",		"Unknown",								Unknown}
 		};
