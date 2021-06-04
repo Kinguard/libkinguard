@@ -93,7 +93,7 @@ static void initStorageConfig()
 
 	SysConfig cfg(true);
 
-	if( cfg.HasKey("dns", "provider") && cfg.GetKeyAsString("dns", "provider") == "OpenProducts" )
+	if( SysInfo::isOP() )
 	{
 		// OP-Device
 
