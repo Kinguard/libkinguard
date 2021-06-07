@@ -12,7 +12,10 @@
 
 using namespace Utils;
 
-SystemManager::SystemManager() = default;
+
+SystemManager::SystemManager(): providers({"OpenProducts"})
+{
+}
 
 SystemManager &SystemManager::Instance()
 {
@@ -111,6 +114,18 @@ void SystemManager::StartUpdate()
 		logg << Logger::Notice << "Failed to start update ("<< err.what()<<")" << lend;
 		this->global_error = "Failed to start update ("s + err.what();
 	}
+}
+
+bool SystemManager::HasProviders()
+{
+	SLOG;
+
+	return this->providers.size() > 0;
+}
+
+const list<string> &SystemManager::Providers()
+{
+	return this->providers;
 }
 
 SystemManager::~SystemManager() = default;

@@ -114,7 +114,7 @@ bool IdentityManager::SetFqdn(const string &name, const string &domain)
 	}
 	catch (std::runtime_error& err)
 	{
-		this->global_error = string("Failed change manilhostname: ") + err.what();
+		this->global_error = string("Failed change mailhostname: ") + err.what();
 		logg << Logger::Error << this->global_error << lend;
 		return false;
 	}

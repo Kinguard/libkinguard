@@ -62,8 +62,22 @@ public:
 	 */
 	void StartUpdate(void);
 
+	/**
+	 * @brief HasProviders
+	 * @return true if system have providers installed
+	 */
+	bool HasProviders();
+
+	/**
+	 * @brief Providers
+	 * @return list with provider IDs
+	 */
+	const list<string>& Providers();
+
+
 	virtual ~SystemManager();
 private:
+	list<string> providers;
 };
 
 #endif // SYSTEMMANAGER_H
