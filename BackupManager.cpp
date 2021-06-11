@@ -145,15 +145,32 @@ Json::Value BackupManager::GetBackups()
 
 bool BackupManager::RestoreBackup(const string &backup, const string &targetpath)
 {
-	// Currently unused
-	(void) targetpath;
-	StorageManager& mgr=StorageManager::Instance();
-	if( ! mgr.mountDevice( TMP_MOUNT ) )
+	// Default target prefix is to restore directly to root file system
+	string destprefix = "/var";
+
+	StorageConfig scfg;
+
+	if( ! scfg.UsePhysicalStorage(Storage::Physical::None) )
 	{
-		logg << Logger::Error << "Failed to mount SD for backup: "<< mgr.Error()<<lend;
-		this->global_error = "Restore backup - Failed to access SD card";
-		return false;
+		// Device use physical storage of some kind, mount it
+		StorageManager& mgr=StorageManager::Instance();
+		if( ! mgr.mountDevice( TMP_MOUNT ) )
+		{
+			logg << Logger::Error << "Failed to mount storage device for restore: "<< mgr.Error()<<lend;
+			this->global_error = "Restore backup - Failed to access storage device";
+			return false;
+		}
+
+		// Update prefix to point to the tmp_mount without the trailing opi
+		destprefix = File::GetPath( TMP_MOUNT );
 	}
+
+	// Check if we should override target prefix
+	if( targetpath != "" )
+	{
+		destprefix = targetpath;
+	}
+
 
 // Temp workaround to figure out if this is a local or remote backup
 // Todo: Refactor in libopi
@@ -187,21 +204,27 @@ constexpr const char* REMOTEBACKUP	= "/tmp/remotebackup";
 		return false;
 	}
 
-	if( !this->backuphelper->RestoreBackup( backup ) )
+	if( !this->backuphelper->RestoreBackup( backup, destprefix ) )
 	{
-		StorageManager::Instance().umountDevice();
+		if( ! scfg.UsePhysicalStorage(Storage::Physical::None) )
+		{
+			StorageManager::Instance().umountDevice();
+		}
 		this->global_error = "Restore Backup - restore failed";
 		return false;
 	}
 
 	try
 	{
-		StorageManager::Instance().umountDevice();
+		if( ! scfg.UsePhysicalStorage(Storage::Physical::None) )
+		{
+			StorageManager::Instance().umountDevice();
+		}
 	}
 	catch( ErrnoException& err)
 	{
-		logg << Logger::Error << "Failed to umount SD after backup: "<< err.what()<<lend;
-		this->global_error = "Restore backup - Failed to remove SD card";
+		logg << Logger::Error << "Failed to umount storage device after backup: "<< err.what()<<lend;
+		this->global_error = "Restore backup - Failed to remove storage device";
 		return false;
 	}
 
