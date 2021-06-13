@@ -845,6 +845,9 @@ bool IdentityManager::OPLogin()
 {
 	logg << Logger::Debug << "Do OP login" << lend;
 
+	// Check again for unit-id that could have changed
+	this->CheckUnitID();
+
 	if( this->unitid.length() == 0 )
 	{
 		logg << Logger::Notice << "Missing UnitID when trying to do OP-Login" << lend;
