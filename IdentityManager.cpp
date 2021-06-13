@@ -40,6 +40,7 @@ IdentityManager &IdentityManager::Instance()
 	return mgr;
 }
 
+
 bool IdentityManager::SetFqdn(const string &name, const string &domain)
 {
 	string oldFqdn = this->GetFqdnAsString();
@@ -843,6 +844,12 @@ bool IdentityManager::CheckUnitID()
 bool IdentityManager::OPLogin()
 {
 	logg << Logger::Debug << "Do OP login" << lend;
+
+	if( this->unitid.length() == 0 )
+	{
+		logg << Logger::Notice << "Missing UnitID when trying to do OP-Login" << lend;
+		return false;
+	}
 
 	AuthServer s( this->unitid);
 	int resultcode = 0;
