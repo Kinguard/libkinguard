@@ -309,21 +309,30 @@ bool IdentityManager::CreateCertificate(bool forceProvider, const string &certty
 			}
 
 			// generate certificate for provider, or if no provider generate self signed certificate
-			if ( this->HasDnsProvider() ) {
-				provider = cfg.GetKeyAsString("dns","provider");
-				if ( provider == "OpenProducts" )
-				{
-					provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
-				}
+			if ( this->HasDnsProvider() && this->IsEnabledDNS()  ) {
 
-				logg << Logger::Debug << "Request certificate from '" << provider << "'"<<lend;
-				if( !this->GetCertificate(fqdn, provider) )
+				list<string> domains = this->DnsAvailableDomains();
+
+				if( std::find(domains.begin(), domains.end(), this->domain) != domains.end() )
 				{
-					logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
-					return false;
+					provider = cfg.GetKeyAsString("dns","provider");
+					if ( provider == "OpenProducts" )
+					{
+						provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
+					}
+
+					logg << Logger::Debug << "Request certificate from '" << provider << "'"<<lend;
+					if( !this->GetCertificate(fqdn, provider) )
+					{
+						logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
+						return false;
+					}
+				}
+				else
+				{
+					logg << Logger::Debug << "Domain " << this->domain << " not supported in backend " <<lend;
 				}
 			}
-
 		}
 		catch (std::runtime_error& err)
 		{
@@ -466,6 +475,17 @@ bool IdentityManager::DisableDNS()
 	}
 
 	return true;
+}
+
+bool IdentityManager::IsEnabledDNS()
+{
+	OPI::SysConfig cfg;
+
+	if( cfg.HasScope("dns") && cfg.HasKey("dns","enabled") )
+	{
+		return cfg.GetKeyAsBool("dns", "enabled");
+	}
+	return false;
 }
 
 bool IdentityManager::EnableDNS()

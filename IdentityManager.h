@@ -175,6 +175,12 @@ public:
 	bool DisableDNS();
 
 	/**
+	 * @brief IsEnabledDNS, check if configured provider is enabled
+	 * @return true if enabled, false otherwise
+	 */
+	bool IsEnabledDNS();
+
+	/**
 	 * @brief Generate and register auth keys in secop
 	 * @return true if successful
 	 */
