@@ -43,7 +43,6 @@ public:
 	 */
 	Json::Value GetBackups();
 
-
 	/**
 	 * @brief RestoreBackup restore a backup to target path
 	 * @param backup Which backup to restore
