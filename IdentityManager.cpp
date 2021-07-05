@@ -285,7 +285,7 @@ bool IdentityManager::CreateCertificate(bool forceProvider, const string &certty
 	{
 		try
 		{
-			// Always genereate self signed server certificate, used as long as no LE-cert or similar present
+			// Always genereate self signed web server certificate, used as long as no LE-cert or similar present
 			if( ! OPI::CryptoHelper::MakeSelfSignedCert(
 						cfg.GetKeyAsString("dns","dnsauthkey"),
 						cfg.GetKeyAsString("webcertificate","defaultcert"),
@@ -309,29 +309,45 @@ bool IdentityManager::CreateCertificate(bool forceProvider, const string &certty
 			}
 
 			// generate certificate for provider, or if no provider generate self signed certificate
-			if ( this->HasDnsProvider() && this->IsEnabledDNS()  ) {
-
-				list<string> domains = this->DnsAvailableDomains();
-
-				if( std::find(domains.begin(), domains.end(), this->domain) != domains.end() )
+			if ( this->HasDnsProvider() )
+			{
+				provider = cfg.GetKeyAsString("dns","provider");
+				if ( provider == "OpenProducts" )
 				{
-					provider = cfg.GetKeyAsString("dns","provider");
-					if ( provider == "OpenProducts" )
-					{
-						provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
-					}
+					provider = "OPI";  // legacy, provider shall be OPI for OpenProducts certificates.
+				}
 
-					logg << Logger::Debug << "Request certificate from '" << provider << "'"<<lend;
-					if( !this->GetCertificate(fqdn, provider) )
+				if( this->IsEnabledDNS() )
+				{
+					// Get a certificate for the supported DNS-provider
+					list<string> domains = this->DnsAvailableDomains();
+
+					if( std::find(domains.begin(), domains.end(), this->domain) != domains.end() )
+					{
+						if( !this->GetCertificate(fqdn, provider) )
+						{
+							logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
+							return false;
+						}
+					}
+					else
+					{
+						logg << Logger::Debug << "Domain " << this->domain << " not supported in backend " <<lend;
+					}
+				}
+				else
+				{
+					// We seem to have a custom domain but still use a mail service
+					// TODO: This is a workaround, maybe should be implemented in mailmanager?
+					logg << Logger::Debug << "Try get a mail-relay cert only" << lend;
+
+					if( !this->GetCertificate(this->GetHostname()+".mailrelay", provider) )
 					{
 						logg << Logger::Error << "Failed to get certificate for device name: "<<fqdn<<lend;
 						return false;
 					}
 				}
-				else
-				{
-					logg << Logger::Debug << "Domain " << this->domain << " not supported in backend " <<lend;
-				}
+
 			}
 		}
 		catch (std::runtime_error& err)
@@ -749,6 +765,8 @@ bool IdentityManager::UploadDnsKey(const string& unitid, const string& token)
 
 bool IdentityManager::GetCertificate(const string &fqdn, const string &provider)
 {
+
+	logg << Logger::Debug << "Request certificate for '" << fqdn <<"' from '" << provider << "'"<<lend;
 
 	/*
 	 *
