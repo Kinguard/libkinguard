@@ -9,12 +9,12 @@
 #include <libutils/Process.h>
 #include <libutils/HttpStatusCodes.h>
 
+#include <libopi/ServiceHelper.h>
 #include <libopi/HostsConfig.h>
 #include <libopi/AuthServer.h>
 #include <libopi/DnsServer.h>
 #include <libopi/SysConfig.h>
 #include <libopi/Secop.h>
-
 #include <unistd.h>
 
 #include <utility>
@@ -816,6 +816,12 @@ bool IdentityManager::GetCertificate(const string &fqdn, const string &provider)
 	unlink( syscert.c_str() );
 
 	File::Write( syscert, ret["cert"].asString(), File::UserRW | File::GroupRead | File::OtherRead);
+
+	// TODO: this should be a generic certificate event that opi-mail should react to
+	if( ! OPI::ServiceHelper::Reload("postfix") )
+	{
+		logg << Logger::Error << "Failed to reload mailserver" << lend;
+	}
 
 	return true;
 }
