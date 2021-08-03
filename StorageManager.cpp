@@ -4,6 +4,7 @@
 
 #include <libutils/FileUtils.h>
 #include <libutils/Logger.h>
+#include <libutils/Constants.h>
 
 #include <libopi/LVM.h>
 #include <libopi/Luks.h>
@@ -14,6 +15,7 @@
 #include <algorithm>
 
 using namespace Utils;
+using namespace Utils::Constants;
 using namespace OPI;
 
 namespace KGP
@@ -632,8 +634,8 @@ list<StorageDevice> StorageManager::QueryStoragePartitions()
 			for( const auto& part : parts)
 			{
 				// There exists a partition on device that is
-				// not the root device
-				if( ! part.Is(StorageDevice::RootDevice) )
+				// not the root device and is bigger than 1GB
+				if( ! part.Is(StorageDevice::RootDevice) && part.Size() > 1_GB )
 				{
 					ret.emplace_back(part);
 				}
