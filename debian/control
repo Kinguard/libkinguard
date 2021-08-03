@@ -4,7 +4,7 @@ Maintainer: Tor Krill <tor@openproducts.se>
 Build-Depends: debhelper (>= 10), cmake, pkg-config,
 	libcppunit-dev,
 	libopi-dev (>= 1.6.49),
-	libutils-dev (>= 1.5.12)
+	libutils-dev (>= 1.5.29)
 Standards-Version: 4.1.2
 Section: libs
 Homepage: https://www.kinguardproject.org/
