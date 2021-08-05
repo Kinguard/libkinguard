@@ -497,7 +497,11 @@ static bool hasStorageDevice(const list<StorageDevice>& devs)
 	for( const auto& dev: devs)
 	{
 		// There exists a physical storage device that is not the boot device
-		if( dev.Is(StorageDevice::Physical) && ! dev.Is(StorageDevice::BootDevice) )
+		// and it has a size bigger than min required size
+		if(
+				dev.Is(StorageDevice::Physical) &&
+				! dev.Is(StorageDevice::BootDevice) &&
+				dev.Size() > KGP_CONF_MIN_STORAGE  )
 		{
 			return true;
 		}
@@ -635,7 +639,7 @@ list<StorageDevice> StorageManager::QueryStoragePartitions()
 			{
 				// There exists a partition on device that is
 				// not the root device and is bigger than 1GB
-				if( ! part.Is(StorageDevice::RootDevice) && part.Size() > 1_GB )
+				if( ! part.Is(StorageDevice::RootDevice) && part.Size() >  KGP_CONF_MIN_STORAGE )
 				{
 					ret.emplace_back(part);
 				}

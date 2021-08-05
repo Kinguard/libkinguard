@@ -1,6 +1,8 @@
 #ifndef KINGUARD_H
 #define KINGUARD_H
 
+#include <libutils/Constants.h>
+
 #define VERSION_MAJOR	@VERSION_MAJOR@
 #define VERSION_MINOR	@VERSION_MINOR@
 #define VERSION_PATCH	@VERSION_PATCH@
@@ -10,5 +12,7 @@
 
 #define TMP_MOUNT		"/mnt/opi/"
 
+using namespace Utils::Constants;
+constexpr uint64_t KGP_CONF_MIN_STORAGE = 1_GB;
 
 #endif
