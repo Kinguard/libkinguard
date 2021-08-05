@@ -481,7 +481,7 @@ static bool hasPartition(const list<StorageDevice>& devs)
 			{
 				// There exists a partition on device that is
 				// not the root device
-				if( ! part.Is(StorageDevice::RootDevice) )
+				if( ! part.Is(StorageDevice::RootDevice) && part.Size() > KGP_CONF_MIN_STORAGE )
 				{
 					return true;
 				}
