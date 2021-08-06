@@ -1,6 +1,7 @@
 #ifndef SYSTEMMANAGER_H
 #define SYSTEMMANAGER_H
 
+#include <memory>
 #include <string>
 #include <tuple>
 
@@ -8,11 +9,18 @@
 
 using namespace std;
 
+/*
+ * Forward declarations for internal usage
+ */
+class ShellAccess;
+
 /**
  * @brief The SystemManager class
  *
  * This class is responsible for system maintanence etc which
  * does not fit into a specific domain, such as user/backup etc.
+ *
+ * Subparts should be split out when starting to get to complex
  *
  */
 
@@ -22,6 +30,14 @@ private:
 	SystemManager();
 public:
 	static SystemManager& Instance();
+
+
+	/*
+	 *
+	 *  Update/upgrade functionality
+	 *
+	 */
+
 
 	/**
 	 * @brief UpgradeAvailable
@@ -62,6 +78,12 @@ public:
 	 */
 	void StartUpdate(void);
 
+	/*
+	 *
+	 *  Provider functionality
+	 *
+	 */
+
 	/**
 	 * @brief HasProviders
 	 * @return true if system have providers installed
@@ -74,10 +96,45 @@ public:
 	 */
 	const list<string>& Providers();
 
+	/*
+	 *
+	 *  Shell access functionality
+	 *
+	 */
+
+	/**
+	 * @brief ShellAccessAvailable
+	 * @return true if kgp supports shell access control on this system
+	 */
+	bool ShellAccessAvailable();
+
+	/**
+	 * @brief ShellAccessEnabled
+	 * @return true if shell access is enabled, false otherwise
+	 */
+	bool ShellAccessEnabled();
+
+	/**
+	 * @brief ShellAccessEnable, enable shell access if possible
+	 * @return true if succesful
+	 */
+	bool ShellAccessEnable();
+
+	/**
+	 * @brief ShellAccessDisable, disable shell access if enabled
+	 * @return true if succesful
+	 */
+	bool ShellAccessDisable();
+
 
 	virtual ~SystemManager();
 private:
+	/*
+	 * Provider attributes
+	 */
 	list<string> providers;
+
+	unique_ptr<ShellAccess> shellaccess;
 };
 
 #endif // SYSTEMMANAGER_H

@@ -21,7 +21,7 @@ Description: Kinguard project high level functionality library
 Package: libkinguard1
 Architecture: any
 Multi-Arch: same
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: kgp-assets, ${shlibs:Depends}, ${misc:Depends}
 Description: Kinguard project high level functionality library
  High level functionality for the Kinguard project platform.
  This library contains functionality for managing resources
