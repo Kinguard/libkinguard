@@ -191,6 +191,9 @@ public:
 			{
 				logg << Logger::Error << "Failed to install dropbear ssh server" << lend;
 			}
+
+			this->shellenabled = ret;
+			this->dropbearinstalled = ret;
 		}
 		return ret;
 	}
@@ -200,11 +203,24 @@ public:
 		logg << Logger::Debug << "ShellAccess: Disable" << lend;
 
 		bool ret = false;
+
+		if( ! this->dropbearinstalled )
+		{
+			logg << Logger::Warning << "Trying to disable ssh but dropbear not installed!" << lend;
+			return false;
+		}
+
 		tie(ret, std::ignore) = Process::Exec( "/usr/share/kgp-assets/kgp-shell/disable_shell.sh" );
 
 		if( ! ret )
 		{
 			logg << Logger::Error << "Failed to remove dropbear ssh server" << lend;
+		}
+		else
+		{
+			// Succesfully removed
+			this->shellenabled = false;
+			this->dropbearinstalled = false;
 		}
 
 		return ret;
@@ -212,9 +228,12 @@ public:
 
 	~ShellAccess() = default;
 private:
-	bool accessavailable{false};
-	bool shellenabled{false};
-	bool dropbearinstalled{false};
+
+	bool accessavailable{false};	/// Is shell access supported (I.e. no openssh installed)
+	// TODO: Below most likely redundant. Should be enough with one of them,
+	// There currently are no scenarion with dropbear installed but not running(?)
+	bool shellenabled{false};		/// Is ssh server running?
+	bool dropbearinstalled{false};	/// Drobbear currently installed?
 };
 
 // We currently support shell access on all arch as long as openssh is not installed
