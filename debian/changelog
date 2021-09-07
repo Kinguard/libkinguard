@@ -1,3 +1,214 @@
+libkinguard (1.0.25) vili; urgency=medium
+
+  * Buster release
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 07 Sep 2021 09:40:05 +0200
+
+libkinguard (1.0.25~test32) vili; urgency=medium
+
+  * Update ShellAccess state upon Enable/Disable
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 09 Aug 2021 14:17:23 +0200
+
+libkinguard (1.0.25~test31) vili; urgency=medium
+
+  * Added ShellAccess control to SystemManager
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 06 Aug 2021 15:42:30 +0200
+
+libkinguard (1.0.25~test30) vili; urgency=medium
+
+  * Check size of partition as well
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 05 Aug 2021 09:10:40 +0200
+
+libkinguard (1.0.25~test29) vili; urgency=medium
+
+  * Add min requirement on phys storage as well as on partition
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 05 Aug 2021 08:54:57 +0200
+
+libkinguard (1.0.25~test28) vili; urgency=medium
+
+  * Skip partitions smaller than 1GB in storagemanager
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 03 Aug 2021 16:56:19 +0200
+
+libkinguard (1.0.25~test27) vili; urgency=medium
+
+  * Reload postfix after successful certificate request #645
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 06 Jul 2021 15:45:22 +0200
+
+libkinguard (1.0.25~test26) vili; urgency=medium
+
+  *	Get an OP mail cert when creating certificates even if not using op dns
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 05 Jul 2021 15:00:25 +0200
+
+libkinguard (1.0.25~test25) vili; urgency=medium
+
+  * StartUpdate Pass argument separately
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 29 Jun 2021 16:47:09 +0200
+
+libkinguard (1.0.25~test24) vili; urgency=medium
+
+  * Invoke kgp-update with force parameter
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 29 Jun 2021 16:33:35 +0200
+
+libkinguard (1.0.25~test23) vili; urgency=medium
+
+  * Only try get certificate if provider enabled and domain supported
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 14 Jun 2021 10:15:22 +0200
+
+libkinguard (1.0.25~test22) vili; urgency=medium
+
+  * Update unitid before trying to login
+
+ -- Tor Krill <tor@openproducts.se>  Sun, 13 Jun 2021 15:52:23 +0200
+
+libkinguard (1.0.25~test21) vili; urgency=medium
+
+  * Check for valid unit-id before trying to log into OP backend
+
+ -- Tor Krill <tor@openproducts.se>  Sun, 13 Jun 2021 14:41:26 +0200
+
+libkinguard (1.0.25~test20) vili; urgency=medium
+
+  *	BackupManager detect if no external storage used and inform restore
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 11 Jun 2021 14:18:43 +0200
+
+libkinguard (1.0.25~test19) vili; urgency=medium
+
+  * Initial stab at separate Provider information
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 07 Jun 2021 16:58:14 +0200
+
+libkinguard (1.0.25~test18) vili; urgency=medium
+
+  * Use sysinfo::isOP to identify OP device
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 04 Jun 2021 12:14:56 +0200
+
+libkinguard (1.0.25~test17) vili; urgency=medium
+
+  * Update storage descriptions
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 26 May 2021 08:45:11 +0200
+
+libkinguard (1.0.25~test16) vili; urgency=medium
+
+  * Add equal operator to StorageConfig Base class
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 25 May 2021 17:09:17 +0200
+
+libkinguard (1.0.25~test15) vili; urgency=medium
+
+  * Use Storage objects more in StorageManager
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 25 May 2021 16:54:26 +0200
+
+libkinguard (1.0.25~test14) vili; urgency=medium
+
+  * Refactor storageconfig, add human readable descriptions
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 25 May 2021 15:45:09 +0200
+
+libkinguard (1.0.25~test13) vili; urgency=medium
+
+  * Remove req on storageconfig to be valid in query methods.
+
+ -- Tor Krill <tor@openproducts.se>  Wed, 19 May 2021 11:30:40 +0200
+
+libkinguard (1.0.25~test12) vili; urgency=medium
+
+  * Add Query storage methods to StorageManager to be able to
+    dynamically construct options to setup app
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 18 May 2021 16:38:41 +0200
+
+libkinguard (1.0.25~test11) vili; urgency=medium
+
+  * Don't try to mount device if no backing store available
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 11 May 2021 16:02:27 +0200
+
+libkinguard (1.0.25~test10) vili; urgency=medium
+
+  * Use partition when unlocking device without logical storage.
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 06 May 2021 09:58:28 +0200
+
+libkinguard (1.0.25~test9) vili; urgency=medium
+
+  * Work on storage sync
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 04 May 2021 09:18:43 +0200
+
+libkinguard (1.0.25~test8) vili; urgency=medium
+
+  * Set default values for storage upon selecting type
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 03 May 2021 14:19:38 +0200
+
+libkinguard (1.0.25~test7) vili; urgency=medium
+
+  * Add means to update StorageConfig
+
+ -- Tor Krill <tor@openproducts.se>  Fri, 30 Apr 2021 15:58:12 +0200
+
+libkinguard (1.0.25~test6) vili; urgency=medium
+
+  * Add test StorageDevice is BootDevice
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 29 Apr 2021 09:26:19 +0200
+
+libkinguard (1.0.25~test5) vili; urgency=medium
+
+  * Update checkdisk and let disk settle before determine if available
+
+ -- Tor Krill <tor@openproducts.se>  Tue, 27 Apr 2021 17:04:32 +0200
+
+libkinguard (1.0.25~test4) vili; urgency=medium
+
+  * More bug fixes
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 26 Apr 2021 11:29:14 +0200
+
+libkinguard (1.0.25~test3) vili; urgency=medium
+
+  * Misc bug fixes
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 26 Apr 2021 10:59:41 +0200
+
+libkinguard (1.0.25~test2) vili; urgency=medium
+
+  * Add dep on cppunit
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 22 Apr 2021 11:04:51 +0200
+
+libkinguard (1.0.25~test1) vili; urgency=medium
+
+  * Major refactoring of StorageManager
+  * Added StorageConfig class to better describe storage config
+  * Added StorageDevice class to represent storage device
+  * Major rewrite of StorageManager::Initialize etc
+  * Initial add of unit tests for library
+
+ -- Tor Krill <tor@openproducts.se>  Thu, 22 Apr 2021 10:43:17 +0200
+
+libkinguard (1.0.24) vili; urgency=medium
+
+  * Add IsConfigured query method to SysManager
+  * Refactor static methods in sysmanager to be none static
+  * Use C++14 features
+
+ -- Tor Krill <tor@openproducts.se>  Mon, 12 Apr 2021 17:07:41 +0200
+
 libkinguard (1.0.23) vili; urgency=medium
 
   * Update to use http status codes from libutils
