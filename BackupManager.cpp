@@ -176,10 +176,12 @@ bool BackupManager::RestoreBackup(const string &backup, const string &targetpath
 // Todo: Refactor in libopi
 constexpr const char* LOCALBACKUP	= "/tmp/localbackup";
 constexpr const char* REMOTEBACKUP	= "/tmp/remotebackup";
-
+	bool isLocal = false;
+	bool isRemote = false;
 	if( backup.substr(0,strlen(LOCALBACKUP) ) == LOCALBACKUP )
 	{
 		logg << Logger::Debug << "Do restore from local backup "<< backup << lend;
+		isLocal = true;
 		if( ! this->backuphelper->MountLocal() )
 		{
 			logg << Logger::Error << "Failed to (re)mount local backup" << lend;
@@ -190,6 +192,7 @@ constexpr const char* REMOTEBACKUP	= "/tmp/remotebackup";
 	else if( backup.substr(0, strlen(REMOTEBACKUP)) == REMOTEBACKUP )
 	{
 		logg << Logger::Debug << "Do restore from remote backup "<< backup << lend;
+		isRemote = true;
 		if( ! this->backuphelper->MountRemote() )
 		{
 			logg << Logger::Error << "Failed to (re)mount remote backup" << lend;
@@ -216,6 +219,18 @@ constexpr const char* REMOTEBACKUP	= "/tmp/remotebackup";
 
 	try
 	{
+		if( isLocal )
+		{
+			logg << Logger::Debug << "Umounting local backup" << lend;
+			this->backuphelper->UmountLocal();
+		}
+
+		if ( isRemote )
+		{
+			logg << Logger::Debug << "Umounting remote backup" << lend;
+			this->backuphelper->UmountRemote();
+		}
+
 		if( ! scfg.UsePhysicalStorage(Storage::Physical::None) )
 		{
 			StorageManager::Instance().umountDevice();
