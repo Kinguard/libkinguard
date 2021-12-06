@@ -10,9 +10,10 @@
 
 #include <string>
 
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace KGP
 {
@@ -33,7 +34,7 @@ public:
 	 * { "password" : "secret master password" }
 	 *
 	 */
-	static void Configure(const Json::Value& cfg);
+	static void Configure(const json& cfg);
 
 	/**
 	 * @brief GetBackups
@@ -41,7 +42,7 @@ public:
 	 *
 	 * @example { "local": ("2012-02-13","2012-04-05"), "remote" : ("date1", "date2")
 	 */
-	Json::Value GetBackups();
+	json GetBackups();
 
 	/**
 	 * @brief RestoreBackup restore a backup to target path
@@ -74,7 +75,7 @@ private:
 	 * @brief SetConfig
 	 * @param cfg configuration to use from now on
 	 */
-	void SetConfig(const Json::Value& cfg);
+	void SetConfig(const json& cfg);
 
 	/**
 	 * @brief WriteConfig writes config to disk

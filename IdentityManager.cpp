@@ -380,7 +380,7 @@ bool IdentityManager::DnsNameAvailable(const string &hostname, const string &dom
 {
 	OPI::DnsServer dns;
 	int result_code = 0;
-	Json::Value ret;
+	json ret;
 	tie(result_code, ret) = dns.CheckOPIName( hostname +"."+ domain );
 
 	if( result_code != Status::Ok && result_code != Status::Forbidden )
@@ -633,7 +633,7 @@ tuple<bool,string> IdentityManager::UploadKeys(const string &unitid, const strin
 	AuthServer s(unitid);
 	int resultcode = 0;
 	string token;
-	Json::Value ret;
+	json ret;
 
 	tie(resultcode, ret) = s.Login();
 	logg << Logger::Debug << "Login resultcode from server: " << resultcode <<lend;
@@ -665,14 +665,14 @@ tuple<bool,string> IdentityManager::UploadKeys(const string &unitid, const strin
 	{
 		logg << Logger::Debug << "Send Secret"<<lend;
 
-		if( ! ret.isMember("reply") || ! ret["reply"].isMember("challange")  )
+		if( ! ret.contains("reply") || ! ret["reply"].contains("challange")  )
 		{
 			logg << Logger::Error << "Missing argument from server "<< resultcode <<lend;
 			return make_tuple(false,"");
 		}
 
 		// Got new challenge to encrypt with master
-		string challenge = ret["reply"]["challange"].asString();
+		string challenge = ret["reply"]["challange"].get<string>();
 
 		RSAWrapperPtr c = AuthServer::GetKeysFromSecop();
 
@@ -696,9 +696,9 @@ tuple<bool,string> IdentityManager::UploadKeys(const string &unitid, const strin
 			}
 		}
 
-		if( ret.isMember("token") && ret["token"].isString() )
+		if( ret.contains("token") && ret["token"].is_string() )
 		{
-			token = ret["token"].asString();
+			token = ret["token"].get<string>();
 			if (! this->UploadDnsKey(unitid,token))
 			{
 				logg << Logger::Error << "Failed to upload DNS key"<<lend;
@@ -714,9 +714,9 @@ tuple<bool,string> IdentityManager::UploadKeys(const string &unitid, const strin
 	}
 	else
 	{
-		if( ret.isMember("token") && ret["token"].isString() )
+		if( ret.contains("token") && ret["token"].is_string() )
 		{
-			token = ret["token"].asString();
+			token = ret["token"].get<string>();
 			if (! this->UploadDnsKey(unitid,token))
 			{
 				logg << Logger::Error << "Failed to upload DNS key"<<lend;
@@ -795,7 +795,7 @@ bool IdentityManager::GetCertificate(const string &fqdn, const string &provider)
 	AuthServer s(this->unitid);
 
 	int resultcode = 0;
-	Json::Value ret;
+	json ret;
 	tie(resultcode, ret) = s.GetCertificate(csr,this->token );
 
 	if( resultcode != Status::Ok )
@@ -805,7 +805,7 @@ bool IdentityManager::GetCertificate(const string &fqdn, const string &provider)
 		return false;
 	}
 
-	if( ! ret.isMember("cert") || ! ret["cert"].isString() )
+	if( ! ret.contains("cert") || ! ret["cert"].is_string() )
 	{
 		logg << Logger::Error << "Malformed reply from server " <<lend;
 		this->global_error = "Unexpected reply from OP server when retrieving certificate";
@@ -815,7 +815,7 @@ bool IdentityManager::GetCertificate(const string &fqdn, const string &provider)
 	// Make sure we have no symlinked tempcert in place
 	unlink( syscert.c_str() );
 
-	File::Write( syscert, ret["cert"].asString(), File::UserRW | File::GroupRead | File::OtherRead);
+	File::Write( syscert, ret["cert"].get<string>(), File::UserRW | File::GroupRead | File::OtherRead);
 
 	// TODO: this should be a generic certificate event that opi-mail should react to
 	if( ! OPI::ServiceHelper::Reload("postfix") )
@@ -900,14 +900,14 @@ bool IdentityManager::OPLogin()
 
 	AuthServer s( this->unitid);
 	int resultcode = 0;
-	Json::Value ret;
+	json ret;
 
 	tie(resultcode, ret) = s.Login();
 
 	if( resultcode != Status::Ok && resultcode != Status::Forbidden )
 	{
 		logg << Logger::Error << "Unexpected reply from server "<< resultcode <<lend;
-		this->global_error ="Unexpected reply from OP server ("+ ret["desc"].asString()+")";
+		this->global_error ="Unexpected reply from OP server ("+ ret["desc"].get<string>()+")";
 		return false;
 	}
 
@@ -917,9 +917,9 @@ bool IdentityManager::OPLogin()
 		return false;
 	}
 
-	if( ret.isMember("token") && ret["token"].isString() )
+	if( ret.contains("token") && ret["token"].is_string() )
 	{
-		this->token = ret["token"].asString();
+		this->token = ret["token"].get<string>();
 	}
 	else
 	{

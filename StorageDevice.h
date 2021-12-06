@@ -1,11 +1,12 @@
 #ifndef STORAGEDEVICE_H
 #define STORAGEDEVICE_H
 
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <list>
 
 using namespace std;
+using json = nlohmann::json;
 
 namespace KGP
 {
@@ -115,8 +116,8 @@ public:
 
 	virtual ~StorageDevice() = default;
 private:
-	StorageDevice(Json::Value  dev);
-	Json::Value device;
+	StorageDevice(json  dev);
+	json device;
 };
 
 } // NS KGP

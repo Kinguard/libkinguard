@@ -60,18 +60,18 @@ static AESWrapperPtr GetBackupCrypto(const string& password)
 	return AESWrapperPtr(new AESWrapper(key) );
 }
 
-void BackupManager::Configure(const Json::Value &cfg)
+void BackupManager::Configure(const json &cfg)
 {
 	ScopedLog l("Configure");
 
-	if( !cfg.isMember("password") || !cfg["password"].isString() )
+	if( !cfg.contains("password") || !cfg["password"].is_string() )
 	{
 		throw std::runtime_error("Missing password in backup config");
 	}
 	BackupManager::Instance().SetConfig(cfg);
 }
 
-Json::Value BackupManager::GetBackups()
+json BackupManager::GetBackups()
 {
 	ScopedLog l("Get backups");
 	if( ! this->backuphelper )
@@ -82,7 +82,7 @@ Json::Value BackupManager::GetBackups()
 		if( ! this->SetupRestoreEnv() )
 		{
 			logg << Logger::Error << "Failed to set up restore environment"<<lend;
-			return Json::nullValue;
+			return json();
 		}
 		this->backuphelper = BackupHelperPtr( new BackupHelper( this->backuppassword ) );
 	}
@@ -92,7 +92,7 @@ Json::Value BackupManager::GetBackups()
 		this->backuphelper->SetPassword( this->backuppassword );
 	}
 
-	Json::Value retval;
+	json retval;
 	bool hasdata = false;
 	// Check local
 	if( this->backuphelper->MountLocal() )
@@ -101,7 +101,7 @@ Json::Value BackupManager::GetBackups()
 		for( const auto& val: local)
 		{
 			hasdata = true;
-			retval["local"].append(val);
+			retval["local"].push_back(val);
 		}
 
 		this->backuphelper->UmountLocal();
@@ -120,7 +120,7 @@ Json::Value BackupManager::GetBackups()
 			for( const auto& val: remote)
 			{
 				hasdata = true;
-				retval["remote"].append(val);
+				retval["remote"].push_back(val);
 			}
 			this->backuphelper->UmountRemote();
 		}
@@ -140,7 +140,7 @@ Json::Value BackupManager::GetBackups()
 		this->CleanupRestoreEnv();
 	}
 
-	return hasdata ? retval : Json::nullValue ;
+	return hasdata ? retval : json() ;
 }
 
 bool BackupManager::RestoreBackup(const string &backup, const string &targetpath)
@@ -367,7 +367,7 @@ bool BackupManager::SetupRestoreEnv()
 	}
 
 	string signedchal = CryptoHelper::Base64Encode( ob.SignMessage( challenge ) );
-	Json::Value ret;
+	json ret;
 	tie(resultcode, ret) = s.SendSignedChallenge( signedchal );
 
 	if( resultcode != Status::Forbidden )
@@ -376,7 +376,7 @@ bool BackupManager::SetupRestoreEnv()
 		return false;
 	}
 
-	challenge = ret["challange"].asString();
+	challenge = ret["challange"].get<string>();
 	string cryptchal = Base64Encode( this->backupkey->Encrypt( challenge ) );
 
 	tie(resultcode, ret) = s.SendSecret(cryptchal, Base64Encode( ob.PubKeyAsPEM() ) );
@@ -385,9 +385,9 @@ bool BackupManager::SetupRestoreEnv()
 	{
 		logg << Logger::Notice << "Failed to send secret ("
 			 << resultcode
-			 << ") '" << ret["Message"].asString()<<"'"
+			 << ") '" << ret["Message"].get<string>()<<"'"
 			 <<lend;
-		logg << "Response : "<< ret.toStyledString()<<lend;
+		logg << "Response : "<< ret.dump(4)<<lend;
 		return false;
 	}
 
@@ -395,10 +395,10 @@ bool BackupManager::SetupRestoreEnv()
 
 }
 
-void BackupManager::SetConfig(const Json::Value &cfg)
+void BackupManager::SetConfig(const json &cfg)
 {
-	this->backuppassword = GetBackupPassword( cfg["password"].asString() );
-	this->backupkey = GetBackupCrypto( cfg["password"].asString() );
+	this->backuppassword = GetBackupPassword( cfg["password"].get<string>() );
+	this->backupkey = GetBackupCrypto( cfg["password"].get<string>() );
 
 	this->WriteConfig();
 }

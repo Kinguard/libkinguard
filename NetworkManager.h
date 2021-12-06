@@ -4,9 +4,11 @@
 #include "BaseManager.h"
 
 #include <memory>
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 
 #include <libopi/NetworkConfig.h>
+
+using json = nlohmann::json;
 
 namespace KGP
 {
@@ -40,7 +42,7 @@ public:
 	 *                       "gateway" => "gateway"
 	 *                       "dns" => ["list", "with" "dnss"]
 	 */
-	Json::Value GetConfiguration(const string& interface);
+	json GetConfiguration(const string& interface);
 
 	/**
 	 * @brief StaticConfiguration configure interface with static config

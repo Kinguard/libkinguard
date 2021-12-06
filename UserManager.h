@@ -5,14 +5,14 @@
 
 #include <libopi/Secop.h>
 
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 
 #include <memory>
 #include <string>
 #include <map>
 
 using namespace std;
-
+using json = nlohmann::json;
 namespace KGP {
 
 class UserManager;
@@ -48,7 +48,7 @@ public:
 	 * @param userdata json value with attributes
 	 *        must contain at least username
 	 */
-	User(const Json::Value& userdata);
+	User(const json& userdata);
 
 	/**
 	 * @brief GetUsername
@@ -91,7 +91,7 @@ public:
 	 *
 	 * @return json object with one level key value attributes
 	 */
-	Json::Value ToJson(void);
+	json ToJson(void);
 
 	virtual ~User() = default;
 private:

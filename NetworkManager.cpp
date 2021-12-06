@@ -28,11 +28,23 @@ NetworkManager::NetworkManager()
 
 	string version = sysinfo.OSVersion();
 
-	if( version != "buster")
+	/*
+	 *  We allow Bullseye with a warning for now.
+	 *  Buster is concidered tested and stable.
+	 *  All other versions unsupported for now!
+	 *
+	 *  TODO: Generalize? Query implementations?
+	 */
+	if( version == "bullseye" )
+	{
+		logg << Logger::Notice << "Note, currently untested debian version!" << lend;
+	}
+	else if( version != "buster")
 	{
 		logg << Logger::Alert << "Unsupported raspbian/debian version: " << version << lend;
 		return;
 	}
+
 
 	if( os == SysInfo::OSType::OSDebian )
 	{
@@ -55,7 +67,7 @@ NetworkManager &NetworkManager::Instance()
 	return mgr;
 }
 
-Json::Value NetworkManager::GetConfiguration(const string &interface)
+json NetworkManager::GetConfiguration(const string &interface)
 {
 	return this->net->GetInterface(interface);
 }

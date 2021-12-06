@@ -1,6 +1,6 @@
 #include "SystemManager.h"
 
-#include <json/json.h>
+#include <nlohmann/json.hpp>
 
 #include <libutils/FileUtils.h>
 #include <libutils/Process.h>
@@ -12,7 +12,7 @@
 #define SLOG	ScopedLog l(__func__)
 
 using namespace Utils;
-
+using json = nlohmann::json;
 
 SystemManager::SystemManager(): providers({"OpenProducts"})
 {
@@ -47,27 +47,30 @@ tuple<bool, string> SystemManager::UpgradeAvailable()
 		return make_tuple(false,"");
 	}
 
-	Json::Reader r;
-	Json::Value val;
-	if( !r.parse(retoutput, val) )
+	json val;
+	try
+	{
+		val = json::parse(retoutput);
+	}
+	catch (json::parse_error& err)
 	{
 		logg << Logger::Debug << "Unable to parse output of checker script" << lend;
 		return make_tuple(false,"");
 	}
 
-	if( ! val.isMember("status") || !val["status"].isBool() )
+	if( ! val.contains("status") || !val["status"].is_boolean() )
 	{
 		logg << Logger::Debug << "Missing status from checker script" << lend;
 		return make_tuple(false,"");
 	}
 
-	if( ! val.isMember("description") || !val["description"].isString() )
+	if( ! val.contains("description") || !val["description"].is_string() )
 	{
 		logg << Logger::Debug << "Missing description from checker script" << lend;
 		return make_tuple(false,"");
 	}
 
-	return make_tuple(val["status"].asBool(),val["description"].asString());
+	return make_tuple(val["status"],val["description"]);
 }
 
 bool SystemManager::IsConfigured()

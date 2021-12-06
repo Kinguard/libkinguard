@@ -359,7 +359,7 @@ User::User(string username, string displayname, map<string, string> attrs): user
 
 }
 
-User::User(const Json::Value &userdata)
+User::User(const json &userdata)
 {
 	JsonHelper::TypeChecker tc(	{
 									{0x01, "username", JsonHelper::TypeChecker::STRING},
@@ -371,21 +371,21 @@ User::User(const Json::Value &userdata)
 		throw std::runtime_error("Missing parameters in user constructor");
 	}
 
-	this->username = userdata["username"].asString();
-	this->displayname = userdata["displayname"].asString();
+	this->username = userdata["username"].get<string>();
+	this->displayname = userdata["displayname"].get<string>();
 
-	vector<string> members = userdata.getMemberNames();
-	for( const string& member: members)
+	//vector<string> members = userdata.getMemberNames();
+	for( const auto& member: userdata.items())
 	{
-		if( member != "username" && member != "displayname" )
+		if( member.key() != "username" && member.key() != "displayname" )
 		{
-			if( userdata[member].isString() )
+			if( member.value().is_string() )
 			{
-				this->AddAttribute(member, userdata[member].asString() );
+				this->AddAttribute(member.key(), member.value().get<string>() );
 			}
 			else
 			{
-				logg << Logger::Debug << "Malformed attribute to create user " << member<< lend;
+				logg << Logger::Debug << "Malformed attribute to create user " << member.key()<< lend;
 			}
 		}
 	}
@@ -421,9 +421,9 @@ map<string, string> User::GetAttributes()
 	return this->attributes;
 }
 
-Json::Value User::ToJson()
+json User::ToJson()
 {
-	Json::Value ret;
+	json ret;
 
 	ret["username"] = this->username;
 	ret["displayname"] = this->displayname;

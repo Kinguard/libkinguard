@@ -20,8 +20,9 @@ static void dump(const StorageDevice& dev)
 		 << " name "		<< dev.DeviceName()
 		 << " path "		<< dev.DevicePath()
 		 << " sysp "		<< dev.SysPath()
-		 << " is boot "		<< dev.Is(StorageDevice::BootDevice);
-
+		 << " is boot "		<< dev.Is(StorageDevice::BootDevice)
+			;
+#if 0
 	if( dev.Is(StorageDevice::Mounted) )
 	{
 		list<string> mps = dev.MountPoint();
@@ -38,12 +39,15 @@ static void dump(const StorageDevice& dev)
 	{
 		cout <<  " not mounted";
 	}
+#endif
 	cout << endl;
 }
 #endif
 
 void TestStorageDevice::Test()
 {
+	if( true )
+	{
 	list<StorageDevice> devs = StorageDevice::Devices();
 #if 1
 	cout << "Got " << devs.size() << " devices" << endl;
@@ -82,5 +86,5 @@ void TestStorageDevice::Test()
 
 	CPPUNIT_ASSERT_MESSAGE( "Missing boot device", isBoot);
 	CPPUNIT_ASSERT_MESSAGE( "Missing root device", isRoot);
-
+	}
 }
